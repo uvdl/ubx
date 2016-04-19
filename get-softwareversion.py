@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# Copyright (C) 2016 Berkeley Applied Analytics <john.kua@berkeleyappliedanalytics.com>
 # Copyright (C) 2010 Timo Juhani Lindfors <timo.lindfors@iki.fi>
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy

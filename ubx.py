@@ -2,6 +2,7 @@
 """
 Open GPS Daemon - UBX parser class
 
+(C) 2016 Berkeley Applied Analytics <john.kua@berkeleyappliedanalytics.com>
 (C) 2010 Timo Juhani Lindfors <timo.lindfors@iki.fi>
 (C) 2008 Daniel Willmann <daniel@totalueberwachung.de>
 (C) 2008 Openmoko, Inc.
