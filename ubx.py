@@ -10,7 +10,7 @@ GPLv2
 import struct
 import calendar
 import os
-#import gobject
+import gobject
 import logging
 import sys
 import socket
@@ -45,6 +45,7 @@ CLIDPAIR = {
     "CFG-DAT" : (0x06, 0x06),
     "CFG-EKF" : (0x06, 0x12),
     "CFG-FXN" : (0x06, 0x0e),
+    "CFG-GNSS" : (0x06, 0x3e),
     "CFG-INF" : (0x06, 0x02),
     "CFG-LIC" : (0x06, 0x80),
     "CFG-MSG" : (0x06, 0x01),
@@ -178,6 +179,8 @@ MSGFMT = {
         ["<BB", ["ClsID", "MsgID"]],
     ("ACK-NACK", 2) :
         ["<BB", ["ClsID", "MsgID"]],
+    ("CFG-GNSS", None) :
+        [4, "<BBBB", ['msgVer', 'numTrkChHw', 'numTrkChUse', 'numConfigBlocks'], 8, "<BBBBL", ['gnssId', 'resTrkCh', 'maxTrkCh', 'reserved1', 'flags']],
     ("CFG-PRT", 1) :
         ["<B", ["PortID"]],
     ("CFG-PRT", None) :
@@ -185,9 +188,9 @@ MSGFMT = {
     ("CFG-USB", 108) :
         ["<HHxxHHH32s32s32s", ["VendorID", "ProductID", "reserved2", "PowerConsumption", "Flags", "VendorString", "ProductString", "SerialNumber"]],
     ("CFG-MSG", 2) :
-        ["<BB", ["Class", "MsgID"]],
-    ("CFG-MSG", 3) :
-        ["<BBB", ["Class", "MsgID", "Rate"]],
+        ["<BB", ["msgClass", "msgId"]],
+    ("CFG-MSG", None) :
+        [2, "<BB", ["msgClass", "msgId"], 1, "B", ['rate']],
     ("CFG-NMEA", 4) :
         ["<BBBB", ["Filter", "Version", "NumSV", "Flags"]],
     ("CFG-RATE", 6) :
@@ -204,7 +207,7 @@ MSGFMT = {
     ("CFG-INF", 1) :
         ["<B", ["ProtocolID"]],
     ("CFG-INF", None) :
-        [0, "", [], 8, "<BxxxBBBB", ["ProtocolID", "INFMSG_mask0", "INFMSG_mask1", "INFMSG_mask2", "INFMSG_mask3"]],
+        [0, "", [], 10, "<BxxxBBBBBB", ["ProtocolID", "INFMSG_mask0", "INFMSG_mask1", "INFMSG_mask2", "INFMSG_mask3", "INFMSG_mask4", "INFMSG_mask5"]],
     ("CFG-RST", 4) :
         ["<HBx", ["nav_bbr", "Reset"]],
     ("CFG-RXM", 2) :
@@ -273,10 +276,22 @@ MSGFMT = {
 
 MSGFMT_INV = dict( [ [(CLIDPAIR[clid], le),v + [clid]] for (clid, le),v in MSGFMT.items() ] )
 
+GNSSID = {'GPS': 0,
+          'SBAS': 1,
+          'Galileo': 2,
+          'BeiDou': 3,
+          'IMES': 4,
+          'QZSS': 5,
+          'GLONASS': 6,
+         }
+
+GNSSID_INV = dict( [(v,k) for k, v in GNSSID.iteritems()] )
+
 class Parser():
-    def __init__(self, callback, rawCallback=None, device="/dev/ttySAC1"):
+    def __init__(self, callback, rawCallback=None, device="/dev/ttyO5"):
         self.callback = callback
         self.rawCallback = rawCallback
+        self.device = device
         if device:
             os.system("stty -F %s raw" % device)
             self.fd = os.open(device, os.O_NONBLOCK | os.O_RDWR)

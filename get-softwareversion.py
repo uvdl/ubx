@@ -20,7 +20,7 @@
 # THE SOFTWARE.
 
 
-# Set baudrate
+# Enable or disable the use of NMEA.
 
 import ubx
 import struct
@@ -33,20 +33,12 @@ import socket
 import time
 
 loop = gobject.MainLoop()
-assert len(sys.argv) == 2
-rate = int(sys.argv[1])
-assert rate == 9600 or rate == 115200
 
 def callback(ty, packet):
     print("callback %s" % repr([ty, packet]))
-    if ty == "CFG-PRT":
-        packet[1]["Baudrate"] = rate
-        t.send("CFG-PRT", 20, packet)
-    elif ty == "ACK-ACK":
-        os.system("stty -F {} {}".format(t.device, rate))
-        loop.quit()
+    loop.quit()
     return True
 
 t = ubx.Parser(callback)
-t.send("CFG-PRT", 0, [])
+t.send("MON-VER", 0, [])
 loop.run()

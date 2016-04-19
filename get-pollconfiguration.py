@@ -20,7 +20,7 @@
 # THE SOFTWARE.
 
 
-# Set baudrate
+# Enable or disable the use of NMEA.
 
 import ubx
 import struct
@@ -33,20 +33,31 @@ import socket
 import time
 
 loop = gobject.MainLoop()
-assert len(sys.argv) == 2
-rate = int(sys.argv[1])
-assert rate == 9600 or rate == 115200
 
 def callback(ty, packet):
     print("callback %s" % repr([ty, packet]))
-    if ty == "CFG-PRT":
-        packet[1]["Baudrate"] = rate
-        t.send("CFG-PRT", 20, packet)
+    if ty == "CFG-INF":
+        pass
+        # if sys.argv[1] == "on":
+        #     # NMEA
+        #     packet[1]["In_proto_mask"] = 1
+        #     packet[1]["Out_proto_mask"] = 2
+        # else:
+        #     # only UBX
+        #     packet[1]["In_proto_mask"] = 1
+        #     packet[1]["Out_proto_mask"] = 1
+        # t.send("CFG-PRT", 20, packet)
     elif ty == "ACK-ACK":
-        os.system("stty -F {} {}".format(t.device, rate))
         loop.quit()
     return True
 
+assert len(sys.argv) == 2
 t = ubx.Parser(callback)
-t.send("CFG-PRT", 0, [])
+if sys.argv[1] == 'ubx':
+    t.send("CFG-INF", 1, {'ProtocolID': 0})
+elif sys.argv[1] == 'nmea':
+    t.send("CFG-INF", 1, {'ProtocolID': 1})
+else:
+    print 'Protocol must be \'ubx\' or \'nmea\''
 loop.run()
+

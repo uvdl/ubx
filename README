@@ -1,0 +1,6 @@
+Tested working utils:
+
+getset-messagerate.py
+set-baudrate.py
+ask-position.py
+getset-gnssconfiguration.py
