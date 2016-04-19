@@ -1,6 +1,7 @@
 Tested working utils:
 
-getset-messagerate.py
-set-baudrate.py
-ask-position.py
-getset-gnssconfiguration.py
+getset-messagerate.py (CFG-MSG)
+set-baudrate.py (CFG-PRT)
+ask-position.py (NAV-STATUS, NAV-POSLLH)
+getset-gnssconfiguration.py (CFG-GNSS)
+get-pollconfiguration (CFG-INF)

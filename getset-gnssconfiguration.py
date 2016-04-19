@@ -120,10 +120,14 @@ def callback(ty, packet):
 if __name__=='__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--setEnabled', '-s', nargs='+', help='Sets the enabled systems. Provide a space separated list, e.g. --setEnabled GPS SBAS Galileo')
+    parser.add_argument('--setEnabled', '-s', nargs='+', choices=ubx.GNSSID.keys(), help='Sets the enabled systems. Provide a space separated list, e.g. --setEnabled GPS SBAS Galileo')
+    parser.add_argument('--device', '-d', help='Specify the serial port device to communicate with. e.g. /dev/ttyO5')
     args = parser.parse_args()
 
-    t = ubx.Parser(callback)
+    if args.device is not None:
+        t = ubx.Parser(callback, device=args.device)
+    else:
+        t = ubx.Parser(callback)
     t.send("CFG-GNSS", 0, [])
     loop.run()
 

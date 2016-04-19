@@ -75,6 +75,7 @@ if __name__=='__main__':
     parser.add_argument('cls', help='Specify the message class. NMEA Std is 0xF0. NMEA PUBX is 0xF1.')
     parser.add_argument('ident', help='Specify the message id. i.e. GGA is 0x00.')
     parser.add_argument('--setRate', '-s', type=int, help='Sets the message rate. 1 means send every nav message, 2 means send every other nav message, etc.')
+    parser.add_argument('--device', '-d', help='Specify the serial port device to communicate with. e.g. /dev/ttyO5')
     args = parser.parse_args()
 
     if args.cls is not None:
@@ -89,7 +90,10 @@ if __name__=='__main__':
         else:
             args.ident = int(args.ident)
 
-    t = ubx.Parser(callback)
+    if args.device is not None:
+        t = ubx.Parser(callback, device=args.device)
+    else:
+        t = ubx.Parser(callback)
     t.send("CFG-MSG", 2, {'msgClass': args.cls, 'msgId': args.ident})
     loop.run()
 

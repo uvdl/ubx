@@ -51,13 +51,23 @@ def callback(ty, packet):
         loop.quit()
     return True
 
-assert len(sys.argv) == 2
-t = ubx.Parser(callback)
-if sys.argv[1] == 'ubx':
-    t.send("CFG-INF", 1, {'ProtocolID': 0})
-elif sys.argv[1] == 'nmea':
-    t.send("CFG-INF", 1, {'ProtocolID': 1})
-else:
-    print 'Protocol must be \'ubx\' or \'nmea\''
-loop.run()
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('protocol', choices=['ubx', 'nmea'], help='Specify the protocol to get the configuration for.')
+    parser.add_argument('--device', '-d', help='Specify the serial port device to communicate with. e.g. /dev/ttyO5')
+    args = parser.parse_args()
+    
+    if args.device is not None:
+        t = ubx.Parser(callback, device=args.device)
+    else:
+        t = ubx.Parser(callback)
+
+    if sys.argv[1] == 'ubx':
+        t.send("CFG-INF", 1, {'ProtocolID': 0})
+    elif sys.argv[1] == 'nmea':
+        t.send("CFG-INF", 1, {'ProtocolID': 1})
+    else:
+        print 'Protocol must be \'ubx\' or \'nmea\''
+    loop.run()
 
