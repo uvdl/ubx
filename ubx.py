@@ -110,6 +110,26 @@ CLIDPAIR = {
 
 CLIDPAIR_INV = dict( [ [v,k] for k,v in CLIDPAIR.items() ] )
 
+# MSGFMT - Describes the format of each message. 
+# The key tuple contains the name of the message and the size in bytes. 
+# If the size is None, than than this is a variable length message.
+#
+# The value of each dictionary item is in one of two formats. Both are lists.
+#
+# In the first format, the first element of the list is a string describing the
+# struct format (see the Python struct documentation). The second element is a
+# list of strings with field names for each of the elements of the struct.
+#
+# The second format is used if there is a header section followed by repeated
+# sections. In this format, the first element is the number of bytes for the 
+# header section, followed by the struct format, then the field names. 
+#
+# The fourth element is where the description of the repeated section starts. As 
+# with the header section, this begins with the number of bytes for each 
+# section. It is not the sum of the section sizes. So if each repeated section 
+# is 12 bytes, this value is 12. Finally, the last (sixth) element is the list
+# of field names.
+
 MSGFMT = {
     ("NAV-POSECEF", 20) :
         ["<IiiiI", ["ITOW", "ECEF_X", "ECEF_Y", "ECEF_Z", "Pacc"]],
@@ -196,7 +216,7 @@ MSGFMT = {
     ("CFG-RATE", 6) :
         ["<HHH", ["Meas", "Nav", "Time"]],
     ("CFG-CFG", 12) :
-        ["<III", ["Clear_mask", "Save_mask", "Load_mask"]],
+        ["<III", ["clearMask", "saveMask", "loadMask"]],
     ("CFG-TP", 20) :
         ["<IIbBxxhhi", ["interval", "length", "status", "time_ref", "antenna_cable_delay", "RF_group_delay", "user_delay"]],
     ("CFG-NAV2", 40) :
@@ -286,6 +306,32 @@ GNSSID = {'GPS': 0,
          }
 
 GNSSID_INV = dict( [(v,k) for k, v in GNSSID.iteritems()] )
+
+clearMaskShiftDict = {'ioPort':   0,
+             'msgConf':  1,
+             'infMsg':   2,
+             'navConf':  3,
+             'rxmConf':  4,
+             'rinvConf': 9,
+             'antConf':  10,
+             'logConf':  11,
+             # 'ftsConf':  12
+            }
+
+def buildClearMask(settings=['all']):
+    if settings is None or settings == ['none']:
+        return 0
+    
+    if settings == ['all']:
+        settings = clearMaskShiftDict.keys()
+    
+    mask = 0
+    for setting in settings:
+        if setting not in clearMaskShiftDict:
+            raise Exception('{} is not a valid setting! Must be one of: {}'.format(clearMaskShiftDict.keys()))
+        mask |= (1 << clearMaskShiftDict[setting])
+
+    return mask
 
 class Parser():
     def __init__(self, callback, rawCallback=None, device="/dev/ttyO5"):
