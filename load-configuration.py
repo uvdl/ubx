@@ -32,7 +32,7 @@ import logging
 import sys
 import socket
 import time
-from ubx import clearMaskShiftDict, buildClearMask
+from ubx import clearMaskShiftDict, buildMask
 
 loop = gobject.MainLoop()
 
@@ -57,7 +57,7 @@ if __name__=='__main__':
         t = ubx.Parser(callback, device=args.device)
     else:
         t = ubx.Parser(callback)
-    loadMask = buildClearMask(['all'])
+    loadMask = buildMask(args.settings, clearMaskShiftDict)
 
     print('Loading from saved configuration...')
     t.send("CFG-CFG", 12, {'clearMask': 0, 'saveMask': 0, 'loadMask': loadMask})

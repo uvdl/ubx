@@ -57,7 +57,7 @@ if __name__=='__main__':
         t = ubx.Parser(callback, device=args.device)
     else:
         t = ubx.Parser(callback)
-    saveMask = buildClearMask(args.settings)
+    saveMask = buildMask(args.settings, clearMaskShiftDict)
 
     print('Saving settings to non-volatile memory...')
     t.send("CFG-CFG", 12, {'clearMask': 0, 'saveMask': saveMask, 'loadMask': 0})

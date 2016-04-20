@@ -319,18 +319,38 @@ clearMaskShiftDict = {'ioPort':   0,
              # 'ftsConf':  12
             }
 
-def buildClearMask(settings=['all']):
-    if settings is None or settings == ['none']:
+navBbrMaskShiftDict = {'eph':    0,
+                       'alm':    1,
+                       'health': 2,
+                       'klob':   3,
+                       'pos':    4,
+                       'clkd':   5,
+                       'osc':    6,
+                       'utc':    7,
+                       'rtc':    8,
+                       'aop':    15,
+                      }
+
+resetModeDict = {'hw': 0, 
+                 'sw': 1,
+                 'swGnssOnly': 2,
+                 'hwAfterShutdown': 4, 
+                 'gnssStop': 8,
+                 'gnssStart': 9
+                }
+
+def buildMask(enabledBits, shiftDict):
+    if enabledBits is None or enabledBits == ['none']:
         return 0
     
-    if settings == ['all']:
-        settings = clearMaskShiftDict.keys()
-    
+    if 'all' in enabledBits:
+        enabledBits = shiftDict.keys()
+
     mask = 0
-    for setting in settings:
-        if setting not in clearMaskShiftDict:
-            raise Exception('{} is not a valid setting! Must be one of: {}'.format(clearMaskShiftDict.keys()))
-        mask |= (1 << clearMaskShiftDict[setting])
+    for bit in enabledBits:
+        if bit not in shiftDict:
+            raise Exception('{} is not a valid bit! Must be one of: {}'.format(bit, shiftDict.keys()))
+        mask |= (1 << shiftDict[bit])
 
     return mask
 
