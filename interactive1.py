@@ -63,8 +63,13 @@ def callback(ty, packet):
     print("callback %s" % repr([ty, packet]))
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('device')
+    args = parser.parse_args()
+    
     logging.basicConfig(level=logging.DEBUG)
-    t = ubx.Parser(callback)
+    t = ubx.Parser(callback, device=args.device)
     #t.initializeDevice()
     c = Control(t)
     gobject.MainLoop().run()

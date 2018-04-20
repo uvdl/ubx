@@ -29,7 +29,8 @@ CLASS = {
     "MON" : 0x0a,
     "AID" : 0x0b,
     "TIM" : 0x0d,
-    "USR" : 0x40
+    "USR" : 0x40,
+    "ESF" : 0x10
 }
 
 CLIDPAIR = {
@@ -40,6 +41,9 @@ CLIDPAIR = {
     "AID-EPH" : (0x0b, 0x31),
     "AID-HUI" : (0x0b, 0x02),
     "AID-INI" : (0x0b, 0x01),
+    "AID-REQ" : (0x0b, 0x00),
+    "AID-UNKNOWN-0x32" : (0x0b, 0x32),
+    "AID-UNKNOWN-0x50" : (0x0b, 0x50),
     "AID-REQ" : (0x0b, 0x00),
     "CFG-ANT" : (0x06, 0x13),
     "CFG-CFG" : (0x06, 0x09),
@@ -62,12 +66,22 @@ CLIDPAIR = {
     "CFG-TMODE" : (0x06, 0x1d),
     "CFG-TP" : (0x06, 0x07),
     "CFG-USB" : (0x06, 0x1b),
+    "ESF-RAW" : (0x10, 0x03),
+    "ESF-STATUS" : (0x10, 0x10),
+    "HNR-PVT" : (0x28, 0x00),
     "INF-DEBUG" : (0x04, 0x04),
     "INF-ERROR" : (0x04, 0x00),
     "INF-NOTICE" : (0x04, 0x02),
     "INF-TEST" : (0x04, 0x03),
     "INF-USER" : (0x04, 0x07),
     "INF-WARNING" : (0x04, 0x01),
+    "LOG-FINDTIME" : (0x21, 0x0e),
+    "LOG-RETRIEVEPOS" : (0x21, 0x0b),
+    "LOG-RETRIEVEPOSEXTRA" : (0x21, 0x0f),
+    "LOG-RETRIEVESTRING" : (0x21, 0x0d),
+    "MGA-ACK" : (0x13, 0x60),
+    "MGA-DBD" : (0x13, 0x80),
+    "MGA-FLASH" : (0x13, 0x21),
     "MON-EXCEPT" : (0x0a, 0x05),
     "MON-HW" : (0x0a, 0x09),
     "MON-IO" : (0x0a, 0x02),
@@ -75,19 +89,26 @@ CLIDPAIR = {
     "MON-MSGPP" : (0x0a, 0x06),
     "MON-RXBUF" : (0x0a, 0x07),
     "MON-SCHD" : (0x0a, 0x01),
+    "MON-SMGR" : (0x0a, 0x2e),
     "MON-TXBUF" : (0x0a, 0x08),
     "MON-USB" : (0x0a, 0x0a),
     "MON-VER" : (0x0a, 0x04),
+    "NAV-ATT" : (0x01, 0x05),
     "NAV-CLOCK" : (0x01, 0x22),
     "NAV-DGPS" : (0x01, 0x31),
     "NAV-DOP" : (0x01, 0x04),
     "NAV-EKFSTATUS" : (0x01, 0x40),
+    "NAV-HPPOSECEF" : (0x01, 0x13),
+    "NAV-HPPOSLLH" : (0x01, 0x14),
     "NAV-POSECEF" : (0x01, 0x01),
     "NAV-POSLLH" : (0x01, 0x02),
     "NAV-POSUTM" : (0x01, 0x08),
+    "NAV-PVT" : (0x01, 0x07),
+    "NAV-RELPOSNED" : (0x01, 0x3c),
     "NAV-SBAS" : (0x01, 0x32),
     "NAV-SOL" : (0x01, 0x06),
     "NAV-STATUS" : (0x01, 0x03),
+    "NAV-SVIN" : (0x01, 0x3b),
     "NAV-SVINFO" : (0x01, 0x30),
     "NAV-TIMEGPS" : (0x01, 0x20),
     "NAV-TIMEUTC" : (0x01, 0x21),
@@ -97,16 +118,50 @@ CLIDPAIR = {
     "RXM-EPH" : (0x02, 0x31),
     "RXM-POSREQ" : (0x02, 0x40),
     "RXM-RAW" : (0x02, 0x10),
+    "RXM-RTCM" : (0x02, 0x32),
     "RXM-SFRB" : (0x02, 0x11),
     "RXM-SVSI" : (0x02, 0x20),
+    "SEC-SIGN" : (0x27, 0x01),
+    "SEC-UNIQID" : (0x27, 0x03),
+    "TIM-DOSC" : (0x0d, 0x11),
+    "TIM-FCHG" : (0x0d, 0x16),
+    "TIM-SMEAS" : (0x0d, 0x13),
     "TIM-SVIN" : (0x0d, 0x04),
     "TIM-TM" : (0x0d, 0x02),
     "TIM-TM2" : (0x0d, 0x03),
+    "TIM-TOS" : (0x0d, 0x12),
     "TIM-TP" : (0x0d, 0x01),
+    "TIM-VCOCAL" : (0x0d, 0x15),
     "UPD-DOWNL" : (0x09, 0x01),
     "UPD-EXEC" : (0x09, 0x03),
     "UPD-MEMCPY" : (0x09, 0x04),
-    "UPD-UPLOAD" : (0x09, 0x02)
+    "UPD-SOS" : (0x09, 0x14),
+    "UPD-UPLOAD" : (0x09, 0x02),
+    "NMEA-DTM" : (0xf0, 0x0a),
+    "NMEA-GBS" : (0xf0, 0x09),
+    "NMEA-GGA" : (0xf0, 0x00),
+    "NMEA-GLL" : (0xf0, 0x01),
+    "NMEA-GNS" : (0xf0, 0x0d),
+    "NMEA-GRS" : (0xf0, 0x06),
+    "NMEA-GSA" : (0xf0, 0x02),
+    "NMEA-GST" : (0xf0, 0x07),
+    "NMEA-GSV" : (0xf0, 0x03),
+    "NMEA-RMC" : (0xf0, 0x04),
+    "NMEA-VTG" : (0xf0, 0x05),
+    "NMEA-ZDA" : (0xf0, 0x08),
+    "NMEAP-UNKNOWN-0x01" : (0xf1, 0x01),
+    "NMEAP-TIME" : (0xf1, 0x04),
+    "NMEAP-CONFIG" : (0xf1, 0x41),
+    "RTCM-BEIMSM4" : (0xf5, 0x7c),
+    "RTCM-BEIMSM7" : (0xf5, 0x7f),
+    "RTCM-GPSMSM4" : (0xf5, 0x4a),
+    "RTCM-GPSMSM7" : (0xf5, 0x4d),
+    "RTCM-GLOCODE" : (0xf5, 0xe6),
+    "RTCM-GLOMSM4" : (0xf5, 0x54),
+    "RTCM-GLOMSM7" : (0xf5, 0x57),
+    "RTCM-REFSTATIONARP" : (0xf5, 0x05),
+    "RTCM-REFSTATIONPVT" : (0xf5, 0xfe),
+
 }
 
 CLIDPAIR_INV = dict( [ [v,k] for k,v in CLIDPAIR.items() ] )
@@ -163,6 +218,8 @@ MSGFMT = {
         [12, "<IBBbBBxxx", ["ITOW", "GEO", "MODE", "SYS", "SERVICE", "CNT"], 12, "<BBBBBxhxxh", ["SVID", "FLAGS", "UDRE", "SYSn", "SERVICEn", "PRC", "IC"]],
     ("NAV-EKFSTATUS", 36) : # no response to query
         ["<iiIhbbiiihhhbB", ["pulses", "period", "gyromean", "temp", "dir", "calib", "pulse", "gbias", "gscale", "accps", "accgb", "accgs", "used", "res"]],
+    ("NAV-ATT", 32) :
+        ["<IBxxxiiiIII", ["ITOW", "Version", "Roll", "Pitch", "Heading", "AccRoll", "AccPitch", "AccHeading"]],
     # ('RXM-RAW', [{'Week': 1575, 'ITOW': 475184470, 'NSV': 0}])
     ("RXM-RAW", None) :
         [8, "<ihBx", ["ITOW", "Week", "NSV"], 24, "<ddfBbbB", ["CPMes", "PRMes", "DOMes", "SV", "MesQI", "CNO", "LLI"]],
@@ -262,8 +319,10 @@ MSGFMT = {
     ("MON-SCHD", 24) :
         ["<IIIIHHHBB", ["TSKRUN", "TSKSCHD", "TSKOVRR", "TSKREG", "STACK", "STACKSIZE", "CPUIDLE", "FLYSLY", "PTLSLY"]],
 # MON - GPS system statistics
-    ("MON-HW", 64 + 8) :
-        ["<IIIIHHBBBxI" + ("B" * 32) + "I" + ("x" * 8), ["PinSel", "PinBank", "PinDir", "PinVal", "NoisePerMS", "AGCCnt", "AStatus", "APower", "flags", "useMask", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31", "PinIRQ"]],
+    ("MON-HW", 60) :
+        # ["<IIIIHHBBBxI" + ("B" * 32) + "I" + ("x" * 8), ["PinSel", "PinBank", "PinDir", "PinVal", "NoisePerMS", "AGCCnt", "AStatus", "APower", "flags", "useMask", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31", "PinIRQ"]],
+        # M8 protocol
+        ["<IIIIHHBBBxI" + ("B" * 17) + "BxxIII", ["PinSel", "PinBank", "PinDir", "PinVal", "NoisePerMS", "AGCCnt", "AStatus", "APower", "flags", "useMask", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "JamInd", "PinIRQ", "PullH", "PullL"]],
     ("MON-VER", 40) :
         ["<30s10s", ["SWVersion", "HWVersion"]],
     ("MON-IPC", 28) :
@@ -291,8 +350,14 @@ MSGFMT = {
     ("AID-EPH", 104) :
         ["<" + "I"*26, ["SVID", "HOW", "SF1D0", "SF1D1", "SF1D2", "SF1D3", "SF1D4",
             "SF1D5", "SF1D6", "SF1D7", "SF2D0", "SF2D1", "SF2D2", "SF2D3", "SF2D4",
-            "SF2D5", "SF2D6", "SF2D7", "SF3D0", "SF3D1", "SF3D2", "SF3D3", "SF3D4", "SF3D5", "SF3D6", "SF3D7"]]
+            "SF2D5", "SF2D6", "SF2D7", "SF3D0", "SF3D1", "SF3D2", "SF3D3", "SF3D4", "SF3D5", "SF3D6", "SF3D7"]],
 # TIM - Timekeeping
+# ESF - External Sensor Fusion
+    ("ESF-STATUS", None) :
+        [16, "<IB" + "x"*7 + "BxxB", ["ITOW", "Version", "FusionMode", "NumSens"], 4, "BBBB", ["SensStatus1", "SensStatus2", "Freq", "Faults"]],
+# HNR - High Rate Navigation
+    ("HNR-PVT", 72) :
+        ["<IHBBBBBBiBBxxiiiiiiiiIIIIxxxx", ["ITOW", "Year", "Month", "Day", "Hour", "Min", "Sec", "Valid", "Nano", "GPSFix", "Flags", "LON", "LAT", "HEIGHT", "HMSL", "GSpeed", "Speed", "HeadMot", "HeadVeh", "Hacc", "Vacc", "SAcc", "HeadAcc"]]
 }
 
 MSGFMT_INV = dict( [ [(CLIDPAIR[clid], le),v + [clid]] for (clid, le),v in MSGFMT.items() ] )
@@ -338,6 +403,15 @@ resetModeDict = {'hw': 0,
                  'gnssStop': 8,
                  'gnssStart': 9
                 }
+
+PORTID = {'I2C': 0,
+          'UART1': 1,
+          'UART2': 2,
+          'USB': 3,
+          'SPI': 4,
+          }
+
+PORTID_INV = dict( [(v,k) for k, v in PORTID.iteritems()] )
 
 def buildMask(enabledBits, shiftDict):
     if enabledBits is None or enabledBits == ['none']:
@@ -388,30 +462,42 @@ class Parser():
             # Find the beginning of a UBX message
             start = self.buffer.find( chr( SYNC1 ) + chr( SYNC2 ), buffer_offset )
 
-            if buffer_offset == 0 and start != 0:
-                #logging.debug( "Discarded data not UBX %s" % repr(self.buffer[:start]) )
-                self.buffer = self.buffer[start:]
-                continue
-
-            if start == -1 or start + 8 > len(self.buffer):
+            # Could not find message - keep data because there may be a whole or partial NMEA message
+            # Consider limiting max buffer size
+            if start == -1:
                 return True
 
-            (cl, id, length) = struct.unpack("<BBH", self.buffer[start+2:start+6])
-            if len(self.buffer) < start + length + 8:
-                buffer_offset = start + 2
-                continue
+            # Message shorter than minimum length - return and wait for additional data
+            # Consider limiting max buffer size
+            if start + 8 > len(self.buffer):
+                return True
 
+            # Decode header - message class, id, and length
+            (cl, id, length) = struct.unpack("<BBH", self.buffer[start+2:start+6])
+
+            # Check that there is enough data in the buffer to match the length
+            # If not, return and wait for additional data
+            if len(self.buffer) < start + length + 8:
+                return True
+
+            # Validate checksum  - if fail, skip past the sync
             if self.checksum(self.buffer[start+2:start+length+6]) != struct.unpack("<BB", self.buffer[start+length+6:start+length+8]):
                 buffer_offset = start + 2
                 continue
 
-            if start != 0:
-                logging.warning(" UBX packet ignored %s" % repr(self.buffer[:start]) )
-                self.buffer = self.buffer[start:]
-                buffer_offset = 0
-                continue
+            # At this point, we should have a valid message at the start position
 
-            self.decode(cl, id, length, self.buffer[start+6:start+length+6])
+            # Handle data prior to UBX message
+            if start > 0:
+                logging.debug( "Discarded data not UBX %s" % repr(self.buffer[:start]) )
+                # Attempt to decode NMEA on discarded data
+                self.decodeNmeaBuffer(self.buffer[:start])
+
+            if length == 0:
+                logging.warning('Zero length packet of class {}, id {}!'.format(hex(cl), hex(id)))
+            else:
+                # Decode UBX message
+                self.decode(cl, id, length, self.buffer[start+6:start+length+6])
 
             # Discard packet
             self.buffer = self.buffer[start+length+8:]
@@ -485,3 +571,72 @@ class Parser():
 
         logging.debug( "Got UBX packet of type %s: %s" % (format[-1] , data ) )
         self.callback(format[-1], data)
+
+    def checkUbx(self, buf):
+        result = {'sync': None, 'class': None, 'id': None, 'length': None, 'lengthMatch': None, 'checksum': None}
+        start = 0
+
+        if not buf.startswith(chr( SYNC1 ) + chr( SYNC2 )):
+            result['sync'] = False
+            return result
+
+        result['sync'] = True
+
+        if len(buf) < 6:
+            return result
+
+        # Decode header - message class, id, and length
+        (cl, id, length) = struct.unpack("<BBH", buf[start+2:start+6])
+
+        result['class'] = hex(cl)
+        result['id'] = hex(id)
+        result['length'] = length
+
+        # Check that there is enough data in the buffer to match the length
+        # If not, return and wait for additional data
+        if len(buf) < start + length + 8:
+            result['lengthMatch'] = False
+            return result
+
+        result['lengthMatch'] = True
+
+        # Validate checksum  - if fail, skip past the sync
+        if self.checksum(buf[start+2:start+length+6]) != struct.unpack("<BB", buf[start+length+6:start+length+8]):
+            result['checksum'] = False
+
+        return result
+            
+
+    def decodeNmeaBuffer(self, buf):
+        # This assumes the data buffer is NMEA data and looks for messages
+        messages = buf.split('\r\n')
+
+        order = ['sync', 'class', 'id', 'length', 'lengthMatch', 'checksum']
+
+        if len(messages):
+            start = messages[0].find('$')
+            if start > 0:
+                unknown = messages[0][:start]
+                messages[0] = messages[0][start:]
+                logging.warning('Unknown data ({} bytes): {}'.format(len(unknown), repr(unknown)))
+                result = self.checkUbx(unknown)
+                print(', '.join('{}: {}'.format(key, result[key]) for key in order))
+
+        for message in messages:
+            if len(message) == 0:
+                continue
+
+            start = message.find(',')
+            
+            if message[0] != '$' or start < 0 or not message[1:start].isalpha():
+                logging.warning('Unknown data ({} bytes): {}'.format(len(message), repr(message)))
+                result = self.checkUbx(message)
+                print(', '.join('{}: {}'.format(key, result[key]) for key in order))
+                continue    
+
+            if len(message) < 3 or message[-3] != '*':
+                logging.warning('Possible truncated NMEA string: ({} bytes): {}'.format(len(message), repr(message)))
+                continue
+            
+            self.callback(message[:start], message)
+
