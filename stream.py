@@ -27,11 +27,12 @@ import gobject
 import logging
 import sys
 import socket
+import time
 
 fixTypeDict = {0: 'NO', 1: 'DR', 2: '2D', 3: '3D', 4: '3D+DR', 5: 'Time'}
 fusionModeDict = {0: 'INIT', 1: 'ON', 2: 'Suspended', 3: 'Disabled'}
 
-time = 0
+timestamp = 0
 lat = 0
 lon = 0
 alt = 0
@@ -47,12 +48,15 @@ fusionMode = 'Unknown'
 output = None
 display = True
 outputFile = None
+dataRate = None
+dataRateStartTime = None
+dataCaptured = 0
 
 def callback(ty, packet):
-    global time, lat, lon, alt, speed, roll, pitch, heading, hdop, numSats, avgCNO, fix, fusionMode, output, display
+    global timestamp, lat, lon, alt, speed, roll, pitch, heading, hdop, numSats, avgCNO, fix, fusionMode, output, display, dataRate
 
     if ty == 'HNR-PVT':
-        time = packet[0]['ITOW']/1e3
+        timestamp = packet[0]['ITOW']/1e3
         lat = packet[0]['LAT']/1e7
         lon = packet[0]['LON']/1e7
         alt = packet[0]['HEIGHT']/1e3
@@ -67,10 +71,12 @@ def callback(ty, packet):
             pitchString = '--' if pitch is None else '{:.3f}'.format(pitch)
             hdopString = '--' if hdop is None else '{:.1f}'.format(hdop)
             cnoString = '--' if avgCNO is None else '{:.1f}'.format(avgCNO)
-            displayString = '[{:.3f}] Pos: {:.6f}, {:.6f}, {:.3f}'.format(time, lat, lon, alt)
+            displayString = '[{:.3f}] Pos: {:.6f}, {:.6f}, {:.3f}'.format(timestamp, lat, lon, alt)
             displayString += ' | R: {}, P: {}, Hdg {:.1f}'.format(rollString, pitchString, heading)
             displayString += ' | Fix: {}, # Sats: {}, CNO: {}, HDOP: {}, Fusion: {}'.format(fix, numSatsString, cnoString, hdopString, fusionMode) 
             displayString += ' | {:.1f} MPH'.format(speedMph)
+            if dataRate is not None:
+                displayString += ' | Data rate: {:.1f} Kbps'.format(dataRate/1000)
             print(displayString)
 
     elif ty == 'NAV-ATT':
@@ -103,8 +109,18 @@ def callback(ty, packet):
     #     print("{}: {}".format(ty, packet))
 
 def rawCallback(data):
-    global outputFile
+    global outputFile, dataRate, dataRateStartTime, dataCaptured
     outputFile.write(data)
+    if dataRateStartTime is None:
+        dataRateStartTime = time.time()
+    else:
+        dataCaptured += len(data)
+        curTime = time.time()
+        elapsed = curTime - dataRateStartTime
+        if elapsed > 2:
+            dataRate = dataCaptured / elapsed * 8
+            dataCaptured = 0
+            dataRateStartTime = curTime
 
 if __name__ == "__main__":
     import argparse
