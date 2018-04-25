@@ -110,7 +110,8 @@ def callback(ty, packet):
 
 def rawCallback(data):
     global outputFile, dataRate, dataRateStartTime, dataCaptured
-    outputFile.write(data)
+    if outputFile is not None:
+        outputFile.write(data)
     if dataRateStartTime is None:
         dataRateStartTime = time.time()
     else:
@@ -137,8 +138,7 @@ if __name__ == "__main__":
         outputFile = open(args.output, 'wb')
 
     if args.device:
-        rcb = rawCallback if outputFile is not None else None
-        t = ubx.Parser(callback, device=args.device, rawCallback=rcb)
+        t = ubx.Parser(callback, device=args.device, rawCallback=rawCallback)
         try:
             gobject.MainLoop().run()
         except KeyboardInterrupt:
