@@ -34,67 +34,93 @@ import socket
 import time
 
 loop = gobject.MainLoop()
+state = 0
 
 def printMessage(packet):
     print('\nMessage Rate Configuration (CFG-MSG)')
     print('--------------------------------------')
-    print('Message Class: {}'.format(packet[0]['msgClass']))
-    print('Message ID: {}'.format(packet[0]['msgId']))
+    messageClass = packet[0]['msgClass']
+    messageId = packet[0]['msgId']
+    if (messageClass, messageId) in ubx.CLIDPAIR_INV:
+        messageName = ubx.CLIDPAIR_INV[(messageClass, messageId)]
+        print('Message Name: {}'.format(messageName))
+    else:
+        print('Message Name: Unknown')
+    print('Message Class: {}'.format(messageClass))
+    print('Message ID: {}'.format(messageId))
     for i, block in enumerate(packet[1:]):
         print('Port: {} -> Rate: {}'.format(i, block['rate']))
 
 def setMessageRate(packet, messageRate):
     '''This takes a CFG-MSG packet and modifies it to set the message rate'''
 
-    for block in packet[1:]:
-        block['rate'] = messageRate
+    for port in args.port:
+        print('port: {}'.format(port))
+        packet[port+1]['rate'] = messageRate
 
     return packet
 
 def callback(ty, packet):
-    print("callback %s" % repr([ty, packet]))
+    global state
     if ty == "CFG-MSG":
-        print('***********************')
-        print(' Current configuration')
-        print('***********************')
-        printMessage(packet)
-        if args.setRate is not None:
-            packet = setMessageRate(packet, args.setRate)
+        if args.setRate is None:
+            printMessage(packet)
+            loop.quit()
+        else:
+            if state == 0:
+                print('\n********************')
+                print(' Old configuration')
+                print('********************')
+                printMessage(packet)
+                packet = setMessageRate(packet, args.setRate)
 
-            packetSize = 2 + 1*(len(packet)-1)
-            print('\nSending new configuration...')
-            t.send("CFG-MSG", packetSize, packet)
+                packetSize = 2 + 1*(len(packet)-1)
+                print('\nSending new configuration...')
+                t.send("CFG-MSG", packetSize, packet)
+                state = 1
+            elif state == 2:
+                print('\n********************')
+                print(' New configuration')
+                print('********************')
+                printMessage(packet)
+                loop.quit()
     elif ty == "ACK-ACK":
-        if args.setRate is not None:
+        if args.setRate is not None and state == 1:
             print('\nNew configuration accepted!')
-        loop.quit()
+            t.send("CFG-MSG", 2, {'msgClass': messageClass, 'msgId': messageId})
+            state = 2
     return True
 
 if __name__=='__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('cls', help='Specify the message class. NMEA Std is 0xF0. NMEA PUBX is 0xF1.')
-    parser.add_argument('ident', help='Specify the message id. i.e. GGA is 0x00.')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--clid', nargs=2, help='Specify the message class and ID')
+    group.add_argument('--name', help='Specify the message name')
     parser.add_argument('--setRate', '-s', type=int, help='Sets the message rate. 1 means send every nav message, 2 means send every other nav message, etc.')
+    parser.add_argument('--port', '-p', default=[1], type=int, action='append', help='Select a port to set: 0=DDC(I2C), 1=UART1, 3=USB, 4=SPI',)
     parser.add_argument('--device', '-d', help='Specify the serial port device to communicate with. e.g. /dev/ttyO5')
     args = parser.parse_args()
 
-    if args.cls is not None:
-        if args.cls.startswith('0x') or args.cls.startswith('0X'):
-            args.cls = int(args.cls, 16)
-        else:
-            args.cls = int(args.cls)
+    logging.basicConfig(level=logging.ERROR)
 
-    if args.ident is not None:
-        if args.ident.startswith('0x') or args.ident.startswith('0X'):
-            args.ident = int(args.ident, 16)
+    def parseHexDecString(hexDecString):
+        if hexDecString.lower().startswith('0x'):
+            return int(hexDecString, 16)
         else:
-            args.ident = int(args.ident)
+            return int(hexDecString)
+
+    if args.clid is not None:
+        messageClass, messageId = args.clid
+        messageClass = parseHexDecString(messageClass)
+        messageId = parseHexDecString(messageId)
+    elif args.name is not None:
+        messageClass, messageId = ubx.CLIDPAIR[args.name]
 
     if args.device is not None:
         t = ubx.Parser(callback, device=args.device)
     else:
         t = ubx.Parser(callback)
-    t.send("CFG-MSG", 2, {'msgClass': args.cls, 'msgId': args.ident})
+    t.send("CFG-MSG", 2, {'msgClass': messageClass, 'msgId': messageId})
     loop.run()
 

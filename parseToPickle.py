@@ -46,10 +46,14 @@ fix = 'No'
 fusionMode = 'Unknown'
 output = None
 display = True
-outputFile = None
 
 def callback(ty, packet):
-    global time, lat, lon, alt, speed, roll, pitch, heading, hdop, numSats, avgCNO, fix, fusionMode, output, display
+    global time, lat, lon, alt, speed, roll, pitch, heading, hdop, numSats, avgCNO, fix, fusionMode, output
+
+    if output is not None:
+        if ty not in output:
+            output[ty] = []
+        output[ty].append(packet)
 
     if ty == 'HNR-PVT':
         time = packet[0]['ITOW']/1e3
@@ -102,35 +106,29 @@ def callback(ty, packet):
     # else:
     #     print("{}: {}".format(ty, packet))
 
-def rawCallback(data):
-    global outputFile
-    outputFile.write(data)
-
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument('--device', '-d', default=None)
-    group.add_argument('--file', '-f', default=None)
+    parser.add_argument('file', help='UBX file to parse')
     parser.add_argument('--output', '-o', default=None)
     args = parser.parse_args()
     
     logging.basicConfig(level=logging.WARNING)
 
-    if args.output is not None:
-        outputFile = open(args.output, 'wb')
+    if args.output is None:
+        head, ext = os.path.splitext(args.file)
+        args.output = head + '.pickle'
+        
+    display = False
+    output = {}
+    t = ubx.Parser(callback, device=False)
+    binFile = args.file
+    data = open(binFile,'rb').read()
+    t.parse(data)
 
-    if args.device:
-        rcb = rawCallback if outputFile is not None else None
-        t = ubx.Parser(callback, device=args.device, rawCallback=rcb)
-        try:
-            gobject.MainLoop().run()
-        except KeyboardInterrupt:
-            gobject.MainLoop().quit()
-            if outputFile is not None:
-                outputFile.close()
-    else:
-        t = ubx.Parser(callback, device=False)
-        binFile = args.file
-        data = open(binFile,'r').read()
-        t.parse(data)
+    for key in sorted(output.keys()):
+        print('{}: {}'.format(key, len(output[key])))
+
+    with open(args.output, 'wb') as f:
+        import pickle
+        pickle.dump(output, f, pickle.HIGHEST_PROTOCOL)

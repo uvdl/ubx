@@ -28,13 +28,13 @@ if __name__=='__main__':
     import ubx
     import numpy as np
     import matplotlib.pyplot as plt
-    import cPickle as pickle
+    import pickle
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('input')
     args = parser.parse_args()
 
-    f = open(args.input, 'r')
+    f = open(args.input, 'rb')
     data = pickle.load(f)
 
     cfgMsgInfo = data['CFG-MSG']

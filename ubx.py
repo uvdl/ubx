@@ -51,6 +51,7 @@ CLIDPAIR = {
     "CFG-EKF" : (0x06, 0x12),
     "CFG-FXN" : (0x06, 0x0e),
     "CFG-GNSS" : (0x06, 0x3e),
+    "CFG-HNR" : (0x06, 0x5c),
     "CFG-INF" : (0x06, 0x02),
     "CFG-LIC" : (0x06, 0x80),
     "CFG-MSG" : (0x06, 0x01),
@@ -306,6 +307,8 @@ MSGFMT = {
         ["<BxxxII", ["CH", "RATE", "FLAGS"]],
     ("CFG-TMODE", 28) :
         ["<IiiiIII", ["TimeMode", "FixedPosX", "FixedPosY", "FixedPosZ", "FixedPosVar", "SvinMinDur", "SvinVarLimit"]],
+    ("CFG-HNR", 4) :
+        ["<Bxxx", ['HighNavRate']],
 # CFG EKF - Dead Reckoning
 # UPD - Lowlevel memory manipulation
     ("UPD-UPLOAD", 12 + 16) :
@@ -323,8 +326,8 @@ MSGFMT = {
         # ["<IIIIHHBBBxI" + ("B" * 32) + "I" + ("x" * 8), ["PinSel", "PinBank", "PinDir", "PinVal", "NoisePerMS", "AGCCnt", "AStatus", "APower", "flags", "useMask", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31", "PinIRQ"]],
         # M8 protocol
         ["<IIIIHHBBBxI" + ("B" * 17) + "BxxIII", ["PinSel", "PinBank", "PinDir", "PinVal", "NoisePerMS", "AGCCnt", "AStatus", "APower", "flags", "useMask", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "JamInd", "PinIRQ", "PullH", "PullL"]],
-    ("MON-VER", 40) :
-        ["<30s10s", ["SWVersion", "HWVersion"]],
+    ("MON-VER", None) :
+        [40, "<30s10s", ["SWVersion", "HWVersion"], 30, "<30s", ["Extension"]],
     ("MON-IPC", 28) :
         ["<I16sII", ["HNDLRINST", "LASTEVENT", "IRQINST", "IRQCALL"]],
     ("MON-EXCEPT", 316) :
@@ -371,7 +374,7 @@ GNSSID = {'GPS': 0,
           'GLONASS': 6,
          }
 
-GNSSID_INV = dict( [(v,k) for k, v in GNSSID.iteritems()] )
+GNSSID_INV = dict( [(v,k) for k, v in GNSSID.items()] )
 
 clearMaskShiftDict = {'ioPort':   0,
              'msgConf':  1,
@@ -411,7 +414,7 @@ PORTID = {'I2C': 0,
           'SPI': 4,
           }
 
-PORTID_INV = dict( [(v,k) for k, v in PORTID.iteritems()] )
+PORTID_INV = dict( [(v,k) for k, v in PORTID.items()] )
 
 def buildMask(enabledBits, shiftDict):
     if enabledBits is None or enabledBits == ['none']:
@@ -448,7 +451,6 @@ class Parser():
 
     def cbDeviceReadable(self, source, condition):
         data = os.read(source, 512)
-        #print("read %s" % repr(data))
         if self.rawCallback:
             self.rawCallback(data)
         self.parse(data)
@@ -620,7 +622,7 @@ class Parser():
                 messages[0] = messages[0][start:]
                 logging.warning('Unknown data ({} bytes): {}'.format(len(unknown), repr(unknown)))
                 result = self.checkUbx(unknown)
-                print(', '.join('{}: {}'.format(key, result[key]) for key in order))
+                logging.debug(', '.join('{}: {}'.format(key, result[key]) for key in order))
 
         for message in messages:
             if len(message) == 0:
@@ -631,7 +633,7 @@ class Parser():
             if message[0] != '$' or start < 0 or not message[1:start].isalpha():
                 logging.warning('Unknown data ({} bytes): {}'.format(len(message), repr(message)))
                 result = self.checkUbx(message)
-                print(', '.join('{}: {}'.format(key, result[key]) for key in order))
+                logging.debug(', '.join('{}: {}'.format(key, result[key]) for key in order))
                 continue    
 
             if len(message) < 3 or message[-3] != '*':

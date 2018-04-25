@@ -34,23 +34,38 @@ import time
 
 loop = gobject.MainLoop()
 
+state = 0
+
 def callback(ty, packet):
-    print("callback %s" % repr([ty, packet]))
-    if ty == "CFG-PRT":
-        if sys.argv[1] == "on":
+    global state
+    if state == 0 and ty == "CFG-PRT":
+        print(packet)
+        if args.state == '1':
             # NMEA
-            packet[1]["In_proto_mask"] = 1
-            packet[1]["Out_proto_mask"] = 2
+            packet[1]["In_proto_mask"] = packet[1]["In_proto_mask"] | 2
+            packet[1]["Out_proto_mask"] = packet[1]["Out_proto_mask"] | 2
         else:
-            # only UBX
-            packet[1]["In_proto_mask"] = 1
-            packet[1]["Out_proto_mask"] = 1
+            packet[1]["In_proto_mask"] = packet[1]["In_proto_mask"] & 0xfd
+            packet[1]["Out_proto_mask"] = packet[1]["Out_proto_mask"] & 0xfd
+        print(packet)
         t.send("CFG-PRT", 20, packet)
-    elif ty == "ACK-ACK":
+        state = 1
+    elif state == 1 and ty == "ACK-ACK":
         loop.quit()
     return True
 
-assert len(sys.argv) == 2
-t = ubx.Parser(callback)
-t.send("CFG-PRT", 0, [])
-loop.run()
+if __name__=='__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('state', choices=['0', '1'], help='Sets the NMEA mode - 0 for off, 1 for on')
+    parser.add_argument('--device', '-d', help='Specify the serial port device to communicate with. e.g. /dev/ttyO5')
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.ERROR)
+
+    if args.device is not None:
+        t = ubx.Parser(callback, device=args.device)
+    else:
+        t = ubx.Parser(callback)
+    t.send("CFG-PRT", 0, [])
+    loop.run()

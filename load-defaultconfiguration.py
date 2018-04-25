@@ -32,7 +32,7 @@ import logging
 import sys
 import socket
 import time
-from ubx import clearMaskShiftDict, buildClearMask
+from ubx import clearMaskShiftDict, buildMask
 
 loop = gobject.MainLoop()
 
