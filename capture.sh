@@ -10,4 +10,4 @@ fi
 
 ./configure.sh
 
-./stream.py --device /dev/ttyHSL2 -o ${OUTPUT_PATH}/UBLOX_${DATETIME}.ubx
+./stream.py --device /dev/ttyHSL2 -o ${OUTPUT_PATH}/ublox_${DATETIME}.ubx
