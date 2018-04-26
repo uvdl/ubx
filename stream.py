@@ -81,7 +81,7 @@ def callback(ty, packet):
     
         speedMph = speed / 0.44704
         if display:
-            timeString = dt.strftime('%H:%M:%S') + '.{:03.0f}'.format(dt.microsecond/1000.)
+            timeString = dt.strftime('%H:%M:%S') + '.{:03.0f}Z'.format(dt.microsecond/1000.)
             numSatsString = '--' if numSats is None else '{:2}'.format(numSats)
             rollString = '--' if roll is None else '{:.3f}'.format(roll)
             pitchString = '--' if pitch is None else '{:.3f}'.format(pitch)
