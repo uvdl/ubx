@@ -69,7 +69,7 @@ case "$RATE" in
         ;;
 esac
 
-stty -F $DEVICE $RATE
+stty -F $DEVICE $RATE cs8 -cstopb -parenb
 
 # Reset message configuration
 ./load-defaultconfiguration.py msgConf --device $DEVICE
