@@ -32,6 +32,22 @@ import datetime
 
 fixTypeDict = {0: 'NO', 1: 'DR', 2: '2D', 3: '3D', 4: '3D+DR', 5: 'Time'}
 fusionModeDict = {0: 'INIT', 1: 'ON', 2: 'Suspended', 3: 'Disabled'}
+timeValidDict = {0: 'Invalid', 
+                 1: 'Valid Date', 
+                 2: 'Valid Time', 
+                 3: 'Valid Date+Time', 
+                 4: 'Fully Resolved',
+                 5: 'Fully Resolved',
+                 6: 'Fully Resolved',
+                 7: 'Fully Resolved'}
+timeValidSymbolDict = {0: 'X', 
+                       1: 'x', 
+                       2: '*', 
+                       3: '*', 
+                       4: '',
+                       5: '',
+                       6: '',
+                       7: ''}
 
 timestamp = 0
 lat = 0
@@ -71,6 +87,9 @@ def callback(ty, packet):
         nano = packet[0]['Nano']
         dt = datetime.datetime(year, month, day, hour, minute, second, int(nano/1000.))
         timestamp = time.mktime(dt.timetuple())
+        timeValid = packet[0]['Valid'] & 0x7
+        timeValidSymbol = timeValidSymbolDict[timeValid]
+        # timeValidSymbol = str(timeValid)
 
         lat = packet[0]['LAT']/1e7
         lon = packet[0]['LON']/1e7
@@ -81,7 +100,7 @@ def callback(ty, packet):
     
         speedMph = speed / 0.44704
         if display:
-            timeString = dt.strftime('%H:%M:%S') + '.{:03.0f}Z'.format(dt.microsecond/1000.)
+            timeString = timeValidSymbol + dt.strftime('%H:%M:%S') + '.{:03.0f}Z'.format(dt.microsecond/1000.)
             numSatsString = '--' if numSats is None else '{:2}'.format(numSats)
             rollString = '--' if roll is None else '{:.3f}'.format(roll)
             pitchString = '--' if pitch is None else '{:.3f}'.format(pitch)
