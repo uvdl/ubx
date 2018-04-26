@@ -55,6 +55,9 @@ dataCaptured = 0
 def callback(ty, packet):
     global timestamp, lat, lon, alt, speed, roll, pitch, heading, hdop, numSats, avgCNO, fix, fusionMode, output, display, dataRate
 
+    if args.raw:
+        print('{}: {}'.format(ty, packet))
+
     if ty == 'HNR-PVT':
         timestamp = packet[0]['ITOW']/1e3
         lat = packet[0]['LAT']/1e7
@@ -112,6 +115,9 @@ def rawCallback(data):
     global outputFile, dataRate, dataRateStartTime, dataCaptured
     if outputFile is not None:
         outputFile.write(data)
+    if args.raw:
+        dataRateString = '{:.3f} Kbps'.format(dataRate) if dataRate is not None else '--'
+        print('Data rate: {}, Data [{}]: {}'.format(dataRateString, len(data), repr(data)))
     if dataRateStartTime is None:
         dataRateStartTime = time.time()
     else:
@@ -130,6 +136,7 @@ if __name__ == "__main__":
     group.add_argument('--device', '-d', default=None)
     group.add_argument('--file', '-f', default=None)
     parser.add_argument('--output', '-o', default=None)
+    parser.add_argument('--raw', action='store_true')
     args = parser.parse_args()
     
     logging.basicConfig(level=logging.WARNING)

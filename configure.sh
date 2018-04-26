@@ -2,6 +2,8 @@
 
 DEVICE=/dev/ttyHSL2
 
+stty -F $DEVICE 115200
+
 # Reset message configuration
 ./load-defaultconfiguration.py msgConf --device $DEVICE
 
