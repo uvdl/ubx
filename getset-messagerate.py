@@ -35,6 +35,7 @@ import time
 
 loop = gobject.MainLoop()
 state = 0
+lastStateTransitionTime = None
 
 def printMessage(packet):
     print('\nMessage Rate Configuration (CFG-MSG)')
@@ -55,13 +56,12 @@ def setMessageRate(packet, messageRate):
     '''This takes a CFG-MSG packet and modifies it to set the message rate'''
 
     for port in args.port:
-        print('port: {}'.format(port))
         packet[port+1]['rate'] = messageRate
 
     return packet
 
 def callback(ty, packet):
-    global state
+    global state, lastStateTransitionTime
     if ty == "CFG-MSG":
         if args.setRate is None:
             printMessage(packet)
@@ -78,6 +78,7 @@ def callback(ty, packet):
                 print('\nSending new configuration...')
                 t.send("CFG-MSG", packetSize, packet)
                 state = 1
+                lastStateTransitionTime = time.time()
             elif state == 2:
                 print('\n********************')
                 print(' New configuration')
@@ -89,6 +90,18 @@ def callback(ty, packet):
             print('\nNew configuration accepted!')
             t.send("CFG-MSG", 2, {'msgClass': messageClass, 'msgId': messageId})
             state = 2
+            lastStateTransitionTime = time.time()
+    else:
+        elapsed = time.time() - lastStateTransitionTime
+        if elapsed > 1:
+            if state < 2:
+                loop.quit()
+                import sys; sys.exit(1)
+            else:
+                print('\n*** Was not able to read back new config, but was acknowledged')
+                loop.quit()
+
+
     return True
 
 if __name__=='__main__':
@@ -122,5 +135,6 @@ if __name__=='__main__':
     else:
         t = ubx.Parser(callback)
     t.send("CFG-MSG", 2, {'msgClass': messageClass, 'msgId': messageId})
+    lastStateTransitionTime = time.time()
     loop.run()
 

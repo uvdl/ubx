@@ -73,6 +73,10 @@ fi
 
 if [ $CONFIGURE == 1 ]; then
     ./configure -d $DEVICE -r $RATE
+    if [ $? -eq 1 ]
+    then
+        exit 1
+    fi
 fi
 
 stty -F $DEVICE $RATE

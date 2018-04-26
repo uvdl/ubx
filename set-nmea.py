@@ -35,9 +35,10 @@ import time
 loop = gobject.MainLoop()
 
 state = 0
+lastStateTransitionTime = None
 
 def callback(ty, packet):
-    global state
+    global state, lastStateTransitionTime
     if state == 0 and ty == "CFG-PRT":
         print(packet)
         if args.state == '1':
@@ -50,8 +51,14 @@ def callback(ty, packet):
         print(packet)
         t.send("CFG-PRT", 20, packet)
         state = 1
+        lastStateTransitionTime = time.time()
     elif state == 1 and ty == "ACK-ACK":
         loop.quit()
+    else:
+        elapsed = time.time() - lastStateTransitionTime
+        if elapsed > 1:
+            print('\n*** CFG-PRT request for NMEA protocol config not acknowledged!')
+            import sys; sys.exit(1)
     return True
 
 if __name__=='__main__':
@@ -68,4 +75,5 @@ if __name__=='__main__':
     else:
         t = ubx.Parser(callback)
     t.send("CFG-PRT", 0, [])
+    lastStateTransitionTime = time.time()
     loop.run()

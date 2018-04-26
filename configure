@@ -16,6 +16,14 @@ show_help() {
     echo 
 }
 
+show_error() {
+    echo 
+    echo "***************************"
+    echo "* CONFIGURATION FAILED!!! *"
+    echo "***************************"
+    echo
+}
+
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
 while getopts "h?d:r:" opt; do
@@ -36,14 +44,14 @@ if [ ! -e $DEVICE ]; then
     echo 
     echo "*** ${DEVICE} does not exist!"
     echo 
-    exit 0
+    exit 1
 fi
 
 if [ ! -c $DEVICE ]; then
     echo 
     echo "*** ${DEVICE} is not a character device!"
     echo 
-    exit 0
+    exit 1
 fi
 
 if [[ $DEVICE = *"usbmodem"* ]]; then
@@ -57,7 +65,7 @@ case "$RATE" in
         echo 
         echo "*** Invalid baud rate!"
         show_help
-        exit 0
+        exit 1
         ;;
 esac
 
@@ -65,20 +73,84 @@ stty -F $DEVICE $RATE
 
 # Reset message configuration
 ./load-defaultconfiguration.py msgConf --device $DEVICE
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
 
 # Disable all NMEA messages
 ./set-nmea.py --device $DEVICE 0
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
 
 # Enable desired messages
 ./getset-messagerate.py --device $DEVICE --name ESF-STATUS --setRate 1 --port $PORT
-# ./getset-messagerate.py --device $DEVICE --name ESF-RAW --setRate 1 --port $PORT
-./getset-messagerate.py --device $DEVICE --name HNR-PVT --setRate 1 --port $PORT
-./getset-messagerate.py --device $DEVICE --name NAV-PVT --setRate 1 --port $PORT
-./getset-messagerate.py --device $DEVICE --name NAV-ATT --setRate 1 --port $PORT
-./getset-messagerate.py --device $DEVICE --name NAV-DOP --setRate 1 --port $PORT
-./getset-messagerate.py --device $DEVICE --name NAV-STATUS --setRate 1 --port $PORT
-./getset-messagerate.py --device $DEVICE --name NAV-SVINFO --setRate 1 --port $PORT
-./set-highnavrate.py --device $DEVICE 20
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
 
+# ./getset-messagerate.py --device $DEVICE --name ESF-RAW --setRate 1 --port $PORT
+# if [ $? -eq 1 ]
+# then
+#    show_error
+#    exit 1
+# fi
+
+./getset-messagerate.py --device $DEVICE --name HNR-PVT --setRate 1 --port $PORT
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
+
+./getset-messagerate.py --device $DEVICE --name NAV-PVT --setRate 1 --port $PORT
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
+
+./getset-messagerate.py --device $DEVICE --name NAV-ATT --setRate 1 --port $PORT
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
+
+./getset-messagerate.py --device $DEVICE --name NAV-DOP --setRate 1 --port $PORT
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
+
+./getset-messagerate.py --device $DEVICE --name NAV-STATUS --setRate 1 --port $PORT
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
+
+./getset-messagerate.py --device $DEVICE --name NAV-SVINFO --setRate 1 --port $PORT
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
+
+./set-highnavrate.py --device $DEVICE 20
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
+
+echo
 echo "*** ublox configuration complete"
 echo

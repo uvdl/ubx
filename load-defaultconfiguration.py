@@ -35,15 +35,25 @@ import time
 from ubx import clearMaskShiftDict, buildMask
 
 loop = gobject.MainLoop()
+state = 0
+lastStateTransitionTime = None
 
 def callback(ty, packet):
+    global state, lastStateTransitionTime
     print("callback %s" % repr([ty, packet]))
     if ty == "ACK-ACK":
-        print('Settings restored to default successfully!')
+        print('\nSettings restored to default successfully!')
         loop.quit()
     elif ty == "ACK-NACK":
-        print('Failed to restore settings!')
+        print('\nFailed to restore settings!')
         loop.quit()
+    else:
+        elapsed = time.time() - lastStateTransitionTime
+        if elapsed > 1:
+            print('\n*** Configuration load request failed!')
+            loop.quit()
+            import sys; sys.exit(1)
+
     return True
 
 if __name__=='__main__':
@@ -61,4 +71,5 @@ if __name__=='__main__':
 
     print('Restoring default configuration...')
     t.send("CFG-CFG", 12, {'clearMask': clearMask, 'saveMask': 0, 'loadMask': clearMask})
+    lastStateTransitionTime = time.time()
     loop.run()

@@ -33,12 +33,19 @@ import socket
 import time
 
 loop = gobject.MainLoop()
+lastStateTransitionTime = None
 
 def callback(ty, packet):
+    global lastStateTransitionTime
     # print("callback %s" % repr([ty, packet]))
     if ty == "ACK-ACK":
         print('\nHigh Nav Rate successfully set!')
         loop.quit()
+    else:
+        elapsed = time.time() - lastStateTransitionTime
+        if elapsed > 1:
+            print('\n*** High Nav Rate setting request not acknowledged!')
+            import sys; sys.exit(1)
 
 if __name__ == "__main__":
     import argparse
@@ -55,4 +62,5 @@ if __name__ == "__main__":
     else:
         t = ubx.Parser(callback)
     t.send("CFG-HNR", 4, {'HighNavRate': args.rate})
+    lastStateTransitionTime = time.time()
     loop.run()
