@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# Defaults
+DEVICE=/dev/ttyHSL2
+RATE=115200
+PORT=1
+
+show_help() {
+    echo
+    echo "Usage: configure -d DEVICE -r RATE"
+    echo 
+    echo "    -d DEVICE    Specify the device path. Defaults to /dev/ttyHSL2."
+    echo "                 On OS X with a USB connection, should be /dev/cu.usbmodem*"
+    echo "    -r RATE      Specify the baud rate. Should be 9600 or 115200."
+    echo "                 Defaults to 115200."
+    echo 
+}
+
+OPTIND=1         # Reset in case getopts has been used previously in the shell.
+
+while getopts "h?d:r:" opt; do
+    case "$opt" in
+    h|\?)
+        show_help
+        exit 0
+        ;;
+    d)  DEVICE=$OPTARG
+        ;;
+    r)  
+        RATE=$OPTARG
+        ;;
+    esac
+done
+
+if [ ! -e $DEVICE ]; then
+    echo 
+    echo "*** ${DEVICE} does not exist!"
+    echo 
+    exit 0
+fi
+
+if [ ! -c $DEVICE ]; then
+    echo 
+    echo "*** ${DEVICE} is not a character device!"
+    echo 
+    exit 0
+fi
+
+if [[ $DEVICE = *"usbmodem"* ]]; then
+  PORT=3
+fi
+
+case "$RATE" in
+    9600) ;;
+    115200) ;;
+    *) 
+        echo 
+        echo "*** Invalid baud rate!"
+        show_help
+        exit 0
+        ;;
+esac
+
+stty -F $DEVICE $RATE
+
+# Reset message configuration
+./load-defaultconfiguration.py msgConf --device $DEVICE
+
+# Disable all NMEA messages
+./set-nmea.py --device $DEVICE 0
+
+# Enable desired messages
+./getset-messagerate.py --device $DEVICE --name ESF-STATUS --setRate 1 --port $PORT
+# ./getset-messagerate.py --device $DEVICE --name ESF-RAW --setRate 1 --port $PORT
+./getset-messagerate.py --device $DEVICE --name HNR-PVT --setRate 1 --port $PORT
+./getset-messagerate.py --device $DEVICE --name NAV-PVT --setRate 1 --port $PORT
+./getset-messagerate.py --device $DEVICE --name NAV-ATT --setRate 1 --port $PORT
+./getset-messagerate.py --device $DEVICE --name NAV-DOP --setRate 1 --port $PORT
+./getset-messagerate.py --device $DEVICE --name NAV-STATUS --setRate 1 --port $PORT
+./getset-messagerate.py --device $DEVICE --name NAV-SVINFO --setRate 1 --port $PORT
+./set-highnavrate.py --device $DEVICE 20
+
+echo "*** ublox configuration complete"
+echo
