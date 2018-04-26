@@ -27,11 +27,12 @@ import gobject
 import logging
 import sys
 import socket
+import time
 
 fixTypeDict = {0: 'NO', 1: 'DR', 2: '2D', 3: '3D', 4: '3D+DR', 5: 'Time'}
 fusionModeDict = {0: 'INIT', 1: 'ON', 2: 'Suspended', 3: 'Disabled'}
 
-time = 0
+timestamp = 0
 lat = 0
 lon = 0
 alt = 0
@@ -46,9 +47,15 @@ fix = 'No'
 fusionMode = 'Unknown'
 output = None
 display = True
+dataRate = None
+dataRateStartTime = None
+intervalDataProcessed = 0
+dataSize = None
+dataProcessed = 0
+
 
 def callback(ty, packet):
-    global time, lat, lon, alt, speed, roll, pitch, heading, hdop, numSats, avgCNO, fix, fusionMode, output
+    global timestamp, lat, lon, alt, speed, roll, pitch, heading, hdop, numSats, avgCNO, fix, fusionMode, output, dataProcessed, dataRate, dataSize
 
     if output is not None:
         if ty not in output:
@@ -56,7 +63,7 @@ def callback(ty, packet):
         output[ty].append(packet)
 
     if ty == 'HNR-PVT':
-        time = packet[0]['ITOW']/1e3
+        timestamp = packet[0]['ITOW']/1e3
         lat = packet[0]['LAT']/1e7
         lon = packet[0]['LON']/1e7
         alt = packet[0]['HEIGHT']/1e3
@@ -71,10 +78,13 @@ def callback(ty, packet):
             pitchString = '--' if pitch is None else '{:.3f}'.format(pitch)
             hdopString = '--' if hdop is None else '{:.1f}'.format(hdop)
             cnoString = '--' if avgCNO is None else '{:.1f}'.format(avgCNO)
-            displayString = '[{:.3f}] Pos: {:.6f}, {:.6f}, {:.3f}'.format(time, lat, lon, alt)
+            displayString = '[{:.3f}] Pos: {:.6f}, {:.6f}, {:.3f}'.format(timestamp, lat, lon, alt)
             displayString += ' | R: {}, P: {}, Hdg {:.1f}'.format(rollString, pitchString, heading)
             displayString += ' | Fix: {}, # Sats: {}, CNO: {}, HDOP: {}, Fusion: {}'.format(fix, numSatsString, cnoString, hdopString, fusionMode) 
             displayString += ' | {:.1f} MPH'.format(speedMph)
+            displayString += ' | Processed {:.0f}/{:.0f} KB ({:.3f} %)'.format(dataProcessed/1000., dataSize/1000., float(dataProcessed)/dataSize * 100)
+            if dataRate is not None:
+                displayString += ', Rate: {:.1f} KB/s'.format(dataRate/1000.)
             print(displayString)
 
     elif ty == 'NAV-ATT':
@@ -106,6 +116,21 @@ def callback(ty, packet):
     # else:
     #     print("{}: {}".format(ty, packet))
 
+def rawCallback(data):
+    global dataProcessed, dataRate, intervalDataProcessed, dataRateStartTime
+
+    if dataRateStartTime is None:
+        dataRateStartTime = time.time()
+    else:
+        dataProcessed += len(data)
+        intervalDataProcessed += len(data)
+        curTime = time.time()
+        elapsed = curTime - dataRateStartTime
+        if elapsed > 1:
+            dataRate = intervalDataProcessed / elapsed
+            intervalDataProcessed = 0
+            dataRateStartTime = curTime
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
@@ -119,12 +144,13 @@ if __name__ == "__main__":
         head, ext = os.path.splitext(args.file)
         args.output = head + '.pickle'
         
-    display = False
+    display = True
     output = {}
-    t = ubx.Parser(callback, device=False)
+    t = ubx.Parser(callback, device=False, rawCallback=rawCallback)
     binFile = args.file
     data = open(binFile,'rb').read()
-    t.parse(data)
+    dataSize = len(data)
+    t.parse(data, useRawCallback=True)
 
     for key in sorted(output.keys()):
         print('{}: {}'.format(key, len(output[key])))

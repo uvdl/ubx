@@ -456,7 +456,7 @@ class Parser():
         self.parse(data)
         return True
 
-    def parse( self, data):
+    def parse( self, data, useRawCallback=False):
         self.buffer += data
         buffer_offset = 0
         # Minimum packet length is 8
@@ -501,9 +501,13 @@ class Parser():
                 # Decode UBX message
                 self.decode(cl, id, length, self.buffer[start+6:start+length+6])
 
+            if useRawCallback and (self.rawCallback is not None):
+                self.rawCallback(self.buffer[:start+length+8])
+
             # Discard packet
             self.buffer = self.buffer[start+length+8:]
             buffer_offset = 0
+
 
     def send( self, clid, length, payload ):
         logging.debug( "Sending UBX packet of type %s: %s" % ( clid, payload ) )
