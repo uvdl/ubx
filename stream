@@ -79,6 +79,6 @@ if [ $CONFIGURE == 1 ]; then
     fi
 fi
 
-stty -F $DEVICE $RATE cs8 -cstopb -parenb
+stty -F $DEVICE $RATE
 
 ./stream.py --device $DEVICE

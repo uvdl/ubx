@@ -34,51 +34,27 @@ import socket
 import time
 
 loop = gobject.MainLoop()
-state = 0
-lastStateTransitionTime = 0
 
 def callback(ty, packet):
-    global state, lastStateTransitionTime
-    if ty == "CFG-PRT" and state == 0:
+    print("callback %s" % repr([ty, packet]))
+    if ty == "CFG-PRT":
         packet[1]["Baudrate"] = args.baudrate
         t.send("CFG-PRT", 20, packet)
-        state = 1
-    elif ty == "ACK-ACK" and state == 1:
-        print('\nBaud rate setting acknowledged!')
-        os.system("stty -F {} {} cs8 -cstopb -parenb".format(t.device, args.baudrate))
-        state = 2
+    elif ty == "ACK-ACK":
+        os.system("stty -F {} {}".format(t.device, args.baudrate))
         loop.quit()
-    else:
-        elapsed = time.time() - lastStateTransitionTime
-        if elapsed > 1:
-            loop.quit()
-
     return True
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('baudrate', type=int, choices=[9600, 115200], help='Specify the baudrate. Must be 9600 or 115200')
-    parser.add_argument('--device', '-d', required=True, help='Specify the serial port device to communicate with. e.g. /dev/ttyO5')
-    parser.add_argument('--retries', '-r', type=int, default=2, help='Number of retries for each baudrate')
+    parser.add_argument('--device', '-d', help='Specify the serial port device to communicate with. e.g. /dev/ttyO5')
     args = parser.parse_args()
 
-    baudRates = [9600, 115200]
-
-    for initialBaudRate in baudRates * args.retries:
-        state = 0
-        lastStateTransitionTime = time.time()
-        os.system("stty -F {} {} cs8 -cstopb -parenb".format(args.device, initialBaudRate))
+    if args.device is not None:
         t = ubx.Parser(callback, device=args.device)
-        t.send("CFG-PRT", 0, [])
-        loop.run()
-        os.close(t.fd)
-        if state == 2:
-            break
-
-    if state == 2:
-        print('\n*** Baud rate successfully set to {}'.format(args.baudrate))
     else:
-        print('\n*** FAILED TO SET BAUDRATE!!!')
-
-
+        t = ubx.Parser(callback)
+    t.send("CFG-PRT", 0, [])
+    loop.run()
