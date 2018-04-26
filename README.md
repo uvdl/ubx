@@ -10,3 +10,7 @@ A set of Python scripts to change the configuration settings of u-blox GPS modul
 - save-configuration (CFG-CFG)
 - load-configuration (CFG-CFG)
 - load-defaultconfiguration (CFG-CFG)
+
+## Installation
+### Mac OS X
+brew install pygobject
