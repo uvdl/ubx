@@ -29,6 +29,7 @@ import sys
 import socket
 import time
 import datetime
+import calendar
 
 fixTypeDict = {0: 'NO', 1: 'DR', 2: '2D', 3: '3D', 4: '3D+DR', 5: 'Time'}
 fusionModeDict = {0: 'INIT', 1: 'ON', 2: 'Suspended', 3: 'Disabled'}
@@ -86,7 +87,7 @@ def callback(ty, packet):
         second = packet[0]['Sec']
         nano = packet[0]['Nano']
         dt = datetime.datetime(year, month, day, hour, minute, second, int(nano/1000.))
-        timestamp = time.mktime(dt.timetuple())
+        timestamp = calendar.timegm(dt.timetuple())
         timeValid = packet[0]['Valid'] & 0x7
         timeValidSymbol = timeValidSymbolDict[timeValid]
         # timeValidSymbol = str(timeValid)

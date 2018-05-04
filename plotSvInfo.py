@@ -53,6 +53,7 @@ if __name__=='__main__':
     f = open(args.input, 'rb')
     data = pickle.load(f)
 
+    numSats = avgCNO = None
     try:
         svInfo = data['NAV-SVINFO']
         epoch, numSats, avgCNO = parseSvInfo(svInfo)
@@ -71,6 +72,13 @@ if __name__=='__main__':
     except KeyError:
         print('*** NO HNR-PVT messages!')
         epochPvt = lat = lon = alt = heading = speed = hAcc = vAcc = sAcc = headAcc = []
+
+    numMessages = len(data['HNR-PVT']) if 'HNR-PVT' in data else 0
+    print('# HNR-PVT messages: {}'.format(numMessages))
+    if numSats is not None:
+        print('# sats - mean: {:.3f}, std: {:.3f}, min: {:.3f}, max: {:.3f}'.format(np.mean(numSats), np.std(numSats), np.min(numSats), np.max(numSats)))
+    if avgCNO is not None:
+        print('Average C/No - mean: {:.3f}, std: {:.3f}, min: {:.3f}, max: {:.3f}'.format(np.mean(avgCNO), np.std(avgCNO), np.min(avgCNO), np.max(avgCNO)))
     
     fig, ax = plt.subplots(7, sharex=True)
     ax[0].plot(epoch, numSats, color='r')

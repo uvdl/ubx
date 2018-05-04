@@ -28,9 +28,10 @@ import logging
 import sys
 import socket
 import time
+import datetime
+import calendar
 
-fixTypeDict = {0: 'NO', 1: 'DR', 2: '2D', 3: '3D', 4: '3D+DR', 5: 'Time'}
-fusionModeDict = {0: 'INIT', 1: 'ON', 2: 'Suspended', 3: 'Disabled'}
+from stream import fixTypeDict, fusionModeDict, timeValidDict, timeValidSymbolDict
 
 timestamp = 0
 lat = 0
@@ -63,7 +64,21 @@ def callback(ty, packet):
         output[ty].append(packet)
 
     if ty == 'HNR-PVT':
-        timestamp = packet[0]['ITOW']/1e3
+        epoch = packet[0]['ITOW']/1e3
+        
+        year = packet[0]['Year']
+        month = packet[0]['Month']
+        day = packet[0]['Day']
+        hour = packet[0]['Hour']
+        minute = packet[0]['Min']
+        second = packet[0]['Sec']
+        nano = packet[0]['Nano']
+        dt = datetime.datetime(year, month, day, hour, minute, second, int(nano/1000.))
+        timestamp = calendar.timegm(dt.timetuple())
+        timeValid = packet[0]['Valid'] & 0x7
+        timeValidSymbol = timeValidSymbolDict[timeValid]
+        # timeValidSymbol = str(timeValid)
+
         lat = packet[0]['LAT']/1e7
         lon = packet[0]['LON']/1e7
         alt = packet[0]['HEIGHT']/1e3
@@ -73,12 +88,13 @@ def callback(ty, packet):
     
         speedMph = speed / 0.44704
         if display:
+            timeString = timeValidSymbol + dt.strftime('%H:%M:%S') + '.{:03.0f}Z'.format(dt.microsecond/1000.)
             numSatsString = '--' if numSats is None else '{:2}'.format(numSats)
             rollString = '--' if roll is None else '{:.3f}'.format(roll)
             pitchString = '--' if pitch is None else '{:.3f}'.format(pitch)
             hdopString = '--' if hdop is None else '{:.1f}'.format(hdop)
             cnoString = '--' if avgCNO is None else '{:.1f}'.format(avgCNO)
-            displayString = '[{:.3f}] Pos: {:.6f}, {:.6f}, {:.3f}'.format(timestamp, lat, lon, alt)
+            displayString = '[{}] Pos: {:.6f}, {:.6f}, {:.3f}'.format(timeString, lat, lon, alt)
             displayString += ' | R: {}, P: {}, Hdg {:.1f}'.format(rollString, pitchString, heading)
             displayString += ' | Fix: {}, # Sats: {}, CNO: {}, HDOP: {}, Fusion: {}'.format(fix, numSatsString, cnoString, hdopString, fusionMode) 
             displayString += ' | {:.1f} MPH'.format(speedMph)

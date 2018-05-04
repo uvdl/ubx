@@ -6,6 +6,7 @@ import os
 import numpy as np
 import pickle
 import datetime
+import calendar
 
 if __name__=='__main__':
     import json
@@ -32,7 +33,8 @@ if __name__=='__main__':
         minute = packet[0]['Min']
         second = packet[0]['Sec']
         nano = packet[0]['Nano']
-        timestamp = datetime.datetime(year, month, day, hour, minute, second, int(nano/1000)).timestamp()
+        dt = datetime.datetime(year, month, day, hour, minute, second, int(nano/1000))
+        timestamp = calendar.timegm(dt.timetuple())
 
 
         lat = packet[0]['LAT']/1e7
