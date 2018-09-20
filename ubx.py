@@ -67,6 +67,8 @@ CLIDPAIR = {
     "CFG-TMODE" : (0x06, 0x1d),
     "CFG-TP" : (0x06, 0x07),
     "CFG-USB" : (0x06, 0x1b),
+    "ESF-INS" : (0x10, 0x15),
+    "ESF-MEAS" : (0x10, 0x02),
     "ESF-RAW" : (0x10, 0x03),
     "ESF-STATUS" : (0x10, 0x10),
     "HNR-PVT" : (0x28, 0x00),
@@ -358,6 +360,12 @@ MSGFMT = {
 # ESF - External Sensor Fusion
     ("ESF-STATUS", None) :
         [16, "<IB" + "x"*7 + "BxxB", ["ITOW", "Version", "FusionMode", "NumSens"], 4, "BBBB", ["SensStatus1", "SensStatus2", "Freq", "Faults"]],
+    ("ESF-INS", 36) :
+        ["<IIIiiiiii", ["Bitfield0", "Reserved", "ITOW", "XAngRate", "YAngRate", "ZAngRate", "XAccel", "YAccel", "ZAccel"]],
+    ("ESF-MEAS", None) :
+        [8, "<IHH", ["TimeTag", "Flags", "Id"], 4, "<I", ["Data"]],
+    ("ESF-RAW", None) :
+        [4, "<I", ["Reserved"], 8, "<II", ["Data", "STimeTag"]],  
 # HNR - High Rate Navigation
     ("HNR-PVT", 72) :
         ["<IHBBBBBBiBBxxiiiiiiiiIIIIxxxx", ["ITOW", "Year", "Month", "Day", "Hour", "Min", "Sec", "Valid", "Nano", "GPSFix", "Flags", "LON", "LAT", "HEIGHT", "HMSL", "GSpeed", "Speed", "HeadMot", "HeadVeh", "Hacc", "Vacc", "SAcc", "HeadAcc"]]

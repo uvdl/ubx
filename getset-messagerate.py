@@ -111,9 +111,12 @@ if __name__=='__main__':
     group.add_argument('--clid', nargs=2, help='Specify the message class and ID')
     group.add_argument('--name', help='Specify the message name')
     parser.add_argument('--setRate', '-s', type=int, help='Sets the message rate. 1 means send every nav message, 2 means send every other nav message, etc.')
-    parser.add_argument('--port', '-p', default=[1], type=int, action='append', help='Select a port to set: 0=DDC(I2C), 1=UART1, 3=USB, 4=SPI',)
+    parser.add_argument('--port', '-p', default=[], type=int, action='append', help='Select a port to set: 0=DDC(I2C), 1=UART1, 3=USB, 4=SPI',)
     parser.add_argument('--device', '-d', help='Specify the serial port device to communicate with. e.g. /dev/ttyO5')
     args = parser.parse_args()
+
+    if len(args.port) == 0:
+        args.port = [1]
 
     logging.basicConfig(level=logging.ERROR)
 

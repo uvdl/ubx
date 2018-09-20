@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Just configure the USB output messages
+./stream -d /dev/cu.usbmodem* -c

@@ -4,6 +4,7 @@
 DEVICE=/dev/ttyHSL2
 RATE=115200
 PORT=1
+RESETCONFIG=0
 
 show_help() {
     echo
@@ -13,6 +14,7 @@ show_help() {
     echo "                 On OS X with a USB connection, should be /dev/cu.usbmodem*"
     echo "    -r RATE      Specify the baud rate. Should be 9600 or 115200."
     echo "                 Defaults to 115200."
+    echo "    -R           Reset the ublox to defaults before configuring the outputs."
     echo 
 }
 
@@ -26,7 +28,7 @@ show_error() {
 
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
-while getopts "h?d:r:" opt; do
+while getopts "h?d:r:c" opt; do
     case "$opt" in
     h|\?)
         show_help
@@ -36,6 +38,9 @@ while getopts "h?d:r:" opt; do
         ;;
     r)  
         RATE=$OPTARG
+        ;;
+    R)
+        RESETCONFIG=1
         ;;
     esac
 done
@@ -72,11 +77,14 @@ esac
 stty -F $DEVICE $RATE
 
 # Reset message configuration
-./load-defaultconfiguration.py msgConf --device $DEVICE
-if [ $? -eq 1 ]
+if [ $RESETCONFIG -eq 1 ]
 then
-    show_error
-    exit 1
+    ./load-defaultconfiguration.py msgConf --device $DEVICE
+    if [ $? -eq 1 ]
+    then
+        show_error
+        exit 1
+    fi
 fi
 
 # Disable all NMEA messages
@@ -95,12 +103,26 @@ then
     exit 1
 fi
 
-# ./getset-messagerate.py --device $DEVICE --name ESF-RAW --setRate 1 --port $PORT
-# if [ $? -eq 1 ]
-# then
-#    show_error
-#    exit 1
-# fi
+./getset-messagerate.py --device $DEVICE --name ESF-INS --setRate 1 --port $PORT
+if [ $? -eq 1 ]
+then
+   show_error
+   exit 1
+fi
+
+./getset-messagerate.py --device $DEVICE --name ESF-MEAS --setRate 1 --port $PORT
+if [ $? -eq 1 ]
+then
+   show_error
+   exit 1
+fi
+
+./getset-messagerate.py --device $DEVICE --name ESF-RAW --setRate 1 --port $PORT
+if [ $? -eq 1 ]
+then
+   show_error
+   exit 1
+fi
 
 ./getset-messagerate.py --device $DEVICE --name HNR-PVT --setRate 1 --port $PORT
 if [ $? -eq 1 ]
@@ -150,6 +172,14 @@ then
     show_error
     exit 1
 fi
+
+# # Set GNSS measurement rate
+# ./set-logging-rate.py --device $DEVICE 200
+# if [ $? -eq 1 ]
+# then
+#     show_error
+#     exit 1
+# fi
 
 echo
 echo "*** ublox configuration complete"

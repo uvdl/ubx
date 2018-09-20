@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Do not change any configuration settings
+stream -d /dev/ttyHS1

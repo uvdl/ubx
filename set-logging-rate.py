@@ -33,15 +33,34 @@ import socket
 import time
 
 loop = gobject.MainLoop()
+lastStateTransitionTime = None
 
 def callback(ty, packet):
-    print("callback %s" % repr([ty, packet]))
+    global lastStateTransitionTime
+    # print("callback %s" % repr([ty, packet]))
     if ty == "ACK-ACK":
+        print('\nLogging Rate successfully set!')
         loop.quit()
+    else:
+        elapsed = time.time() - lastStateTransitionTime
+        if elapsed > 1:
+            print('\n*** Logging Rate setting request not acknowledged!')
+            import sys; sys.exit(1)
 
-assert len(sys.argv) == 2
-rate = int(sys.argv[1])
-assert rate == 1000 or rate == 50 or rate == 100
-t = ubx.Parser(callback)
-t.send("CFG-RATE", 6, {"Meas" : rate, "Nav" : 1, "Time" : 0})
-loop.run()
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--device', '-d', default=None)
+    parser.add_argument('rate', default=1000, type=int)
+    args = parser.parse_args()
+    
+    logging.basicConfig(level=logging.ERROR)
+
+    assert args.rate >= 50 and args.rate <= 10000
+    if args.device is not None:
+        t = ubx.Parser(callback, device=args.device)
+    else:
+        t = ubx.Parser(callback)
+    t.send("CFG-RATE", 6, {"Meas" : args.rate, "Nav" : 1, "Time" : 0})
+    lastStateTransitionTime = time.time()
+    loop.run()

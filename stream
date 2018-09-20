@@ -5,7 +5,8 @@ DATETIME=`date -u +'%Y%m%dT%H%M%SZ'`
 # Defaults
 DEVICE=/dev/ttyHSL2
 RATE=115200
-CONFIGURE=1
+CONFIGURE=0
+RESETFLAG=
 
 show_help() {
     echo
@@ -16,25 +17,30 @@ show_help() {
     echo "                 On OS X with a USB connection, should be /dev/cu.usbmodem*"
     echo "    -r RATE      Specify the baud rate. Should be 9600 or 115200."
     echo "                 Defaults to 115200."
-    echo "    -n           Do not configure the ublox."
+    echo "    -c           Configure the ublox message output."
+    echo "    -C           Configure the ublox message output and reset to default config."
     echo 
 }
 
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
-while getopts "nh?d:r:" opt; do
+while getopts "nh?d:r:cC" opt; do
     case "$opt" in
     h|\?)
         show_help
         exit 0
         ;;
-    n)
-        CONFIGURE=0
-        ;;
     d)  DEVICE=$OPTARG
         ;;
     r)  
         RATE=$OPTARG
+        ;;
+    c)
+        CONFIGURE=1
+        ;;
+    C)
+        CONFIGURE=1
+        RESETFLAG=-R;
         ;;
     esac
 done
@@ -72,7 +78,7 @@ else
 fi
 
 if [ $CONFIGURE == 1 ]; then
-    ./configure -d $DEVICE -r $RATE
+    ./configure -d $DEVICE -r $RATE $RESETFLAG
     if [ $? -eq 1 ]
     then
         exit 1

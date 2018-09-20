@@ -30,6 +30,7 @@ import socket
 import time
 import datetime
 import calendar
+from gpsTimestamps import gpsWeekAndTow
 
 fixTypeDict = {0: 'NO', 1: 'DR', 2: '2D', 3: '3D', 4: '3D+DR', 5: 'Time'}
 fusionModeDict = {0: 'INIT', 1: 'ON', 2: 'Suspended', 3: 'Disabled'}
@@ -42,9 +43,9 @@ timeValidDict = {0: 'Invalid',
                  6: 'Fully Resolved',
                  7: 'Fully Resolved'}
 timeValidSymbolDict = {0: 'X', 
-                       1: 'x', 
-                       2: '*', 
-                       3: '*', 
+                       1: 'D', 
+                       2: 'T', 
+                       3: 'DT', 
                        4: '',
                        5: '',
                        6: '',
@@ -55,6 +56,7 @@ lat = 0
 lon = 0
 alt = 0
 speed = 0
+attTime = None
 roll = None
 pitch = None
 heading = None
@@ -63,6 +65,7 @@ numSats = None
 avgCNO = None
 fix = 'No'
 fusionMode = 'Unknown'
+msSinceStartup = None
 output = None
 display = True
 outputFile = None
@@ -71,7 +74,9 @@ dataRateStartTime = None
 dataCaptured = 0
 
 def callback(ty, packet):
-    global timestamp, lat, lon, alt, speed, roll, pitch, heading, hdop, numSats, avgCNO, fix, fusionMode, output, display, dataRate
+    global timestamp, lat, lon, alt, speed, attTime, roll, pitch, heading, hdop, numSats, avgCNO, fix, fusionMode, output, display, dataRate, msSinceStartup
+
+    curTimestamp = time.time()
 
     if args.raw:
         print('{}: {}'.format(ty, packet))
@@ -86,11 +91,12 @@ def callback(ty, packet):
         minute = packet[0]['Min']
         second = packet[0]['Sec']
         nano = packet[0]['Nano']
-        dt = datetime.datetime(year, month, day, hour, minute, second, int(nano/1000.))
-        timestamp = calendar.timegm(dt.timetuple())
+        dt = datetime.datetime(year, month, day, hour, minute, second) + datetime.timedelta(microseconds=int(nano / 1000.))
+        timestamp = calendar.timegm(dt.timetuple()) + dt.microsecond * 1e-6
         timeValid = packet[0]['Valid'] & 0x7
         timeValidSymbol = timeValidSymbolDict[timeValid]
         # timeValidSymbol = str(timeValid)
+        offset = curTimestamp - timestamp
 
         lat = packet[0]['LAT']/1e7
         lon = packet[0]['LON']/1e7
@@ -103,12 +109,14 @@ def callback(ty, packet):
         if display:
             timeString = timeValidSymbol + dt.strftime('%H:%M:%S') + '.{:03.0f}Z'.format(dt.microsecond/1000.)
             numSatsString = '--' if numSats is None else '{:2}'.format(numSats)
+            attTimeString = '--' if attTime is None else '{:.3f}'.format(attTime)
             rollString = '--' if roll is None else '{:.3f}'.format(roll)
             pitchString = '--' if pitch is None else '{:.3f}'.format(pitch)
             hdopString = '--' if hdop is None else '{:.1f}'.format(hdop)
             cnoString = '--' if avgCNO is None else '{:.1f}'.format(avgCNO)
-            displayString = '[{}] Pos: {:.6f}, {:.6f}, {:.3f}'.format(timeString, lat, lon, alt)
-            displayString += ' | R: {}, P: {}, Hdg {:.1f}'.format(rollString, pitchString, heading)
+            msssString = '--' if msSinceStartup is None else '{:.3f}'.format(msSinceStartup/1e3)
+            displayString = '[{} {:.3f} ({:.3f}) | {:.3f} | {}] Pos: {:.6f}, {:.6f}, {:.3f}'.format(timeString, timestamp, offset, epoch, msssString, lat, lon, alt)
+            displayString += ' | Att Time: {}, R: {}, P: {}, Hdg {:.1f}'.format(attTimeString, rollString, pitchString, heading)
             displayString += ' | Fix: {}, # Sats: {}, CNO: {}, HDOP: {}, Fusion: {}'.format(fix, numSatsString, cnoString, hdopString, fusionMode) 
             displayString += ' | {:.1f} MPH'.format(speedMph)
             if dataRate is not None:
@@ -116,13 +124,16 @@ def callback(ty, packet):
             print(displayString)
 
     elif ty == 'NAV-ATT':
+        attTime = packet[0]['ITOW']/1e3
         roll = packet[0]['Roll']/1e5
         pitch = packet[0]['Pitch']/1e5
         # heading = packet[0]['Heading']/1e5
     elif ty == 'NAV-DOP':
         hdop = packet[0]['HDOP']/100.
     elif ty == 'NAV-STATUS':
+        # print('NAV-STATUS time: {:.3f}'.format(packet[0]['ITOW']/1e3))
         fix = fixTypeDict[packet[0]['GPSfix']]
+        msSinceStartup = packet[0]['MSSS']
     elif ty == 'NAV-SVINFO':
         cno = []
         for satInfo in packet[1:]:
