@@ -30,7 +30,8 @@ CLASS = {
     "AID" : 0x0b,
     "TIM" : 0x0d,
     "USR" : 0x40,
-    "ESF" : 0x10
+    "ESF" : 0x10,
+    "MGA" : 0x13
 }
 
 CLIDPAIR = {
@@ -57,6 +58,7 @@ CLIDPAIR = {
     "CFG-MSG" : (0x06, 0x01),
     "CFG-NAV2" : (0x06, 0x1a),
     "CFG-NMEA" : (0x06, 0x17),
+    "CFG-PMS" : (0x06, 0x86),
     "CFG-PRT" : (0x06, 0x00),
     "CFG-RATE" : (0x06, 0x08),
     "CFG-RST" : (0x06, 0x04),
@@ -85,6 +87,11 @@ CLIDPAIR = {
     "MGA-ACK" : (0x13, 0x60),
     "MGA-DBD" : (0x13, 0x80),
     "MGA-FLASH" : (0x13, 0x21),
+    "MGA-GPS-EPH" : (0x13, 0x00),
+    "MGA-GPS-ALM" : (0x13, 0x00),
+    "MGA-GLO-EPH" : (0x13, 0x06),
+    "MGA-GLO-ALM" : (0x13, 0x06),
+    "MGA-INI-TIME_UTC" : (0x13, 0x40),
     "MON-EXCEPT" : (0x0a, 0x05),
     "MON-HW" : (0x0a, 0x09),
     "MON-IO" : (0x0a, 0x02),
@@ -274,6 +281,8 @@ MSGFMT = {
         [2, "<BB", ["msgClass", "msgId"], 1, "B", ['rate']],
     ("CFG-NMEA", 4) :
         ["<BBBB", ["Filter", "Version", "NumSV", "Flags"]],
+    ("CFG-PMS", 8) :
+        ["<BBHHxx", ["Version", "PowerSetupValue", "Period", "OnTime"]],
     ("CFG-RATE", 6) :
         ["<HHH", ["Meas", "Nav", "Time"]],
     ("CFG-CFG", 12) :
@@ -368,8 +377,19 @@ MSGFMT = {
         [4, "<I", ["Reserved"], 8, "<II", ["Data", "STimeTag"]],  
 # HNR - High Rate Navigation
     ("HNR-PVT", 72) :
-        ["<IHBBBBBBiBBxxiiiiiiiiIIIIxxxx", ["ITOW", "Year", "Month", "Day", "Hour", "Min", "Sec", "Valid", "Nano", "GPSFix", "Flags", "LON", "LAT", "HEIGHT", "HMSL", "GSpeed", "Speed", "HeadMot", "HeadVeh", "Hacc", "Vacc", "SAcc", "HeadAcc"]]
-}
+        ["<IHBBBBBBiBBxxiiiiiiiiIIIIxxxx", ["ITOW", "Year", "Month", "Day", "Hour", "Min", "Sec", "Valid", "Nano", "GPSFix", "Flags", "LON", "LAT", "HEIGHT", "HMSL", "GSpeed", "Speed", "HeadMot", "HeadVeh", "Hacc", "Vacc", "SAcc", "HeadAcc"]],
+# MGA - High Rate Navigation
+    ("MGA-GPS-EPH", 68) :
+        ["<BBBxBBBbHHxbhihhihhIIHhihhiiihxx", ["Type", "Version", "SVID", "FitInterval", "URAIndex", "SvHealth", "TGD", "IODC", "TOC", "AF2", "AF1", "AF0", "CRS", "DeltaN", "M0", "CUC", "CUS", "E", "SqrtA", "TOE", "CIC", "Omega0", "CIS", "CRC", "I0", "Omega", "OmegaDot", "IDot"]],
+    ("MGA-GPS-ALM", 36) :
+        ["<BBBBHBBhhIiiihhxxxx", ["Type", "Version", "SVID", "SvHealth", "E", "AlmWNa", "TOA", "DeltaI", "OmegaDot", "SqrtA", "Omega0", "Omega", "M0", "AF0", "AF1"]],
+    ("MGA-GLO-EPH", 48) :
+        ["<BBBxBBBbiiiiiibbbBhBbixxxx", ["Type", "Version", "SVID", "FT", "B", "M", "H", "X", "Y", "Z", "DX", "DY", "DZ", "DDX", "DDY", "DDZ", "TB", "Gamma", "E", "DeltaTau", "Tau"]],
+    ("MGA-GLO-ALM", 36) :
+        ["<BBBxHBBhHiiIibbhxxxx", ["Type", "Version", "SVID", "N", "M", "C", "Tau", "Epsilon", "Lambda", "DeltaI", "TLambda", "DeltaT", "DeltaDT", "H", "Omega"]],
+    ("MGA-INI-TIME_UTC", 24) :
+        ["<BBBbHBBBBBxIHxxI", ["Type", "Version", "Ref", "LeapSecs", "Year", "Month", "Day", "Hour", "Minute", "Second", "Ns", "TAccS", "TAccNs"]],
+}   
 
 MSGFMT_INV = dict( [ [(CLIDPAIR[clid], le),v + [clid]] for (clid, le),v in MSGFMT.items() ] )
 
@@ -414,6 +434,21 @@ resetModeDict = {'hw': 0,
                  'gnssStop': 8,
                  'gnssStart': 9
                 }
+
+powerSetupValueDict = {'fullPower': 0,
+                       'balanced': 1,
+                       'interval': 2,
+                       'aggressive1Hz': 3,
+                       'aggressive2Hz': 4,
+                       'aggressive4Hz': 5
+                      }
+
+timeRefDict = {'utc': 0,
+               'gps': 1,
+               'glonass': 2,
+               'beidou': 3,
+               'galileo': 4
+              }
 
 PORTID = {'I2C': 0,
           'UART1': 1,
@@ -617,9 +652,14 @@ class Parser():
         # Validate checksum  - if fail, skip past the sync
         if self.checksum(buf[start+2:start+length+6]) != struct.unpack("<BB", buf[start+length+6:start+length+8]):
             result['checksum'] = False
+        else:
+            result['checksum'] = True
 
         return result
-            
+
+    def seekToNextUbxMessage(self, buf):
+        start = buf.find(chr( SYNC1 ) + chr( SYNC2 ))
+        return buf[start:]
 
     def decodeNmeaBuffer(self, buf):
         # This assumes the data buffer is NMEA data and looks for messages

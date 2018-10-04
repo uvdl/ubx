@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Defaults
-DEVICE=/dev/ttyHSL2
+DEVICE=/dev/ttyHS1
 RATE=115200
 PORT=1
 RESETCONFIG=0
@@ -76,10 +76,30 @@ esac
 
 stty -F $DEVICE $RATE
 
-# Reset message configuration
+# Reset configuration
 if [ $RESETCONFIG -eq 1 ]
 then
+    # Reset to defaults
     ./load-defaultconfiguration.py msgConf --device $DEVICE
+    if [ $? -eq 1 ]
+    then
+        show_error
+        exit 1
+    fi
+
+    # Set full power mode (CFG-PMS)
+    ./set-powermode --device $DEVICE --mode fullPower
+
+    # Configure high nav rate (HNR - 20Hz)
+    ./set-highnavrate.py --device $DEVICE 20
+    if [ $? -eq 1 ]
+    then
+        show_error
+        exit 1
+    fi
+
+    # Set GNSS measurement rate (2Hz)
+    ./set-logging-rate.py --device $DEVICE 500 --navRate 1 --timeRef utc
     if [ $? -eq 1 ]
     then
         show_error
@@ -165,21 +185,6 @@ then
     show_error
     exit 1
 fi
-
-./set-highnavrate.py --device $DEVICE 20
-if [ $? -eq 1 ]
-then
-    show_error
-    exit 1
-fi
-
-# # Set GNSS measurement rate
-# ./set-logging-rate.py --device $DEVICE 200
-# if [ $? -eq 1 ]
-# then
-#     show_error
-#     exit 1
-# fi
 
 echo
 echo "*** ublox configuration complete"

@@ -1,30 +1,33 @@
 #!/bin/bash
 
-DATETIME=`date -u +'%Y%m%dT%H%M%SZ'`
-
 # Defaults
 DEVICE=/dev/ttyHS1
 RATE=115200
-CONFIGURE=0
-RESETFLAG=
+PORT=1
+RESETCONFIG=0
 
 show_help() {
     echo
-    echo "Usage: stream [-d DEVICE] [-r RATE] [-n] [DIRECTORY]"
+    echo "Usage: readConfiguration -d DEVICE -r RATE"
     echo 
-    echo "    DIRECTORY    Path to save the output file. Defaults to the current directory."
-    echo "    -d DEVICE    Specify the device path. Defaults to /dev/ttyHS1."
+    echo "    -d DEVICE    Specify the device path. Defaults to /dev/ttyHSL2."
     echo "                 On OS X with a USB connection, should be /dev/cu.usbmodem*"
     echo "    -r RATE      Specify the baud rate. Should be 9600 or 115200."
     echo "                 Defaults to 115200."
-    echo "    -c           Configure the ublox message output."
-    echo "    -C           Configure the ublox message output and reset to default config."
     echo 
+}
+
+show_error() {
+    echo 
+    echo "***************************"
+    echo "* CONFIGURATION READ FAILED!!! *"
+    echo "***************************"
+    echo
 }
 
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
-while getopts "nh?d:r:cC" opt; do
+while getopts "h?d:r:c" opt; do
     case "$opt" in
     h|\?)
         show_help
@@ -35,29 +38,25 @@ while getopts "nh?d:r:cC" opt; do
     r)  
         RATE=$OPTARG
         ;;
-    c)
-        CONFIGURE=1
-        ;;
-    C)
-        CONFIGURE=1
-        RESETFLAG=-R;
-        ;;
     esac
 done
-shift $(($OPTIND - 1))
 
 if [ ! -e $DEVICE ]; then
     echo 
     echo "*** ${DEVICE} does not exist!"
     echo 
-    exit 0
+    exit 1
 fi
 
 if [ ! -c $DEVICE ]; then
     echo 
     echo "*** ${DEVICE} is not a character device!"
     echo 
-    exit 0
+    exit 1
+fi
+
+if [[ $DEVICE = *"usbmodem"* ]]; then
+  PORT=3
 fi
 
 case "$RATE" in
@@ -67,24 +66,27 @@ case "$RATE" in
         echo 
         echo "*** Invalid baud rate!"
         show_help
-        exit 0
+        exit 1
         ;;
 esac
 
-if [ $# -eq 0 ]; then
-    OUTPUT_PATH=.
-else
-    OUTPUT_PATH=$1
-fi
-
-if [ $CONFIGURE == 1 ]; then
-    ./configure -d $DEVICE -r $RATE $RESETFLAG
-    if [ $? -eq 1 ]
-    then
-        exit 1
-    fi
-fi
-
 stty -F $DEVICE $RATE
 
-./stream.py --device $DEVICE
+# Get power mode (CFG-PMS)
+./get-powermode --device $DEVICE
+
+# Get high nav rate (CFG-HNR)
+./get-highnavrate.py --device $DEVICE
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
+
+# Get GNSS measurement rate (CFG-RATE)
+./get-logging-rate.py --device $DEVICE
+if [ $? -eq 1 ]
+then
+    show_error
+    exit 1
+fi
