@@ -15,6 +15,7 @@ import gobject
 import logging
 import sys
 import socket
+import time
 
 SYNC1=0xb5
 SYNC2=0x62
@@ -272,7 +273,7 @@ MSGFMT = {
     ("CFG-PRT", 1) :
         ["<B", ["PortID"]],
     ("CFG-PRT", None) :
-        [0, "", [], 20, "<BxxxIIHHHxx", ["PortID", "Mode", "Baudrate", "In_proto_mask", "Out_proto_mask", "Flags"]],
+        [0, "", [], 20, "<BxHIIHHHxx", ["PortID", "TxReady", "Mode", "Baudrate", "In_proto_mask", "Out_proto_mask", "Flags"]],
     ("CFG-USB", 108) :
         ["<HHxxHHH32s32s32s", ["VendorID", "ProductID", "reserved2", "PowerConsumption", "Flags", "VendorString", "ProductString", "SerialNumber"]],
     ("CFG-MSG", 2) :
@@ -482,11 +483,7 @@ class Parser():
         if device:
             os.system("stty -F %s raw" % device)
             self.fd = os.open(device, os.O_NONBLOCK | os.O_RDWR)
-            try:
-                buf = os.read(self.fd, 512) # flush input
-                print("flushed %s" % repr(buf))
-            except:
-                pass
+            self.flush()
             gobject.io_add_watch(self.fd, gobject.IO_IN, self.cbDeviceReadable)
         self.buffer = ""
         self.ack = {"CFG-PRT" : 0}
@@ -498,6 +495,21 @@ class Parser():
             self.rawCallback(data)
         self.parse(data)
         return True
+
+    def setBaudRate(self, baudRate):
+        os.close(self.fd)
+        os.system('stty -F {} {} cs8 -cstopb -parenb'.format(self.device, baudRate))
+        self.fd = os.open(self.device, os.O_NONBLOCK | os.O_RDWR)
+        self.flush()
+        # time.sleep(0.1)
+
+    def flush(self, quiet=True):
+        try:
+            buf = os.read(self.fd, 512) # flush input
+            if not quiet:
+                print("flushed %s" % repr(buf))
+        except:
+            pass
 
     def parse( self, data, useRawCallback=False):
         self.buffer += data
@@ -672,7 +684,7 @@ class Parser():
             if start > 0:
                 unknown = messages[0][:start]
                 messages[0] = messages[0][start:]
-                logging.warning('Unknown data ({} bytes): {}'.format(len(unknown), repr(unknown)))
+                logging.debug('Unknown data ({} bytes): {}'.format(len(unknown), repr(unknown)))
                 result = self.checkUbx(unknown)
                 logging.debug(', '.join('{}: {}'.format(key, result[key]) for key in order))
 
@@ -683,13 +695,13 @@ class Parser():
             start = message.find(',')
             
             if message[0] != '$' or start < 0 or not message[1:start].isalpha():
-                logging.warning('Unknown data ({} bytes): {}'.format(len(message), repr(message)))
+                logging.debug('Unknown data ({} bytes): {}'.format(len(message), repr(message)))
                 result = self.checkUbx(message)
                 logging.debug(', '.join('{}: {}'.format(key, result[key]) for key in order))
                 continue    
 
             if len(message) < 3 or message[-3] != '*':
-                logging.warning('Possible truncated NMEA string: ({} bytes): {}'.format(len(message), repr(message)))
+                logging.debug('Possible truncated NMEA string: ({} bytes): {}'.format(len(message), repr(message)))
                 continue
             
             self.callback(message[:start], message)
