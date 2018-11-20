@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # Reset back to defaults before configuring
-configure -d /dev/cu.usbmodem* -R
+./configure -d /dev/cu.usbmodem* -R

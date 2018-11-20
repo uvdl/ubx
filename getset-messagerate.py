@@ -24,6 +24,7 @@
 # Enable or disable the use of NMEA.
 
 import ubx
+import ubloxMessage
 import struct
 import calendar
 import os
@@ -42,8 +43,8 @@ def printMessage(packet):
     print('--------------------------------------')
     messageClass = packet[0]['msgClass']
     messageId = packet[0]['msgId']
-    if (messageClass, messageId) in ubx.CLIDPAIR_INV:
-        messageName = ubx.CLIDPAIR_INV[(messageClass, messageId)]
+    if (messageClass, messageId) in ubloxMessage.CLIDPAIR_INV:
+        messageName = ubloxMessage.CLIDPAIR_INV[(messageClass, messageId)]
         print('Message Name: {}'.format(messageName))
     else:
         print('Message Name: Unknown')
@@ -131,7 +132,7 @@ if __name__=='__main__':
         messageClass = parseHexDecString(messageClass)
         messageId = parseHexDecString(messageId)
     elif args.name is not None:
-        messageClass, messageId = ubx.CLIDPAIR[args.name]
+        messageClass, messageId = ubloxMessage.CLIDPAIR[args.name]
 
     if args.device is not None:
         t = ubx.Parser(callback, device=args.device)

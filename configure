@@ -28,7 +28,7 @@ show_error() {
 
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
-while getopts "h?d:r:c" opt; do
+while getopts "h?d:r:R" opt; do
     case "$opt" in
     h|\?)
         show_help
@@ -88,7 +88,7 @@ then
     fi
 
     # Set full power mode (CFG-PMS)
-    ./set-powermode --device $DEVICE --mode fullPower
+    ./set-powermode.py --device $DEVICE --mode fullPower
 
     # Configure high nav rate (HNR - 20Hz)
     ./set-highnavrate.py --device $DEVICE 20
