@@ -451,6 +451,8 @@ class UbloxMessage(object):
 
     @staticmethod
     def parse(message):
+        message = bytearray(message)
+
         # Validate message
         result = UbloxMessage.validate(message)
         msgClass = result['class']
@@ -477,7 +479,7 @@ class UbloxMessage(object):
             logging.warning('Zero length packet of class {}, id {}!'.format(hex(msgClass), hex(msgId)))
         else:
             # Decode UBX message
-            msgFormat, msgData = UbloxMessage.decode(cl, id, length, message[6:length+6])
+            msgFormat, msgData = UbloxMessage.decode(msgClass, msgId, length, message[6:length+6])
 
         return msgFormat, msgData, remainder
 
@@ -487,7 +489,7 @@ class UbloxMessage(object):
         result = {'sync': False, 'class': None, 'id': None, 'length': None, 'lengthMatch': False, 'checksum': False, 'valid': False}
         start = 0
 
-        if not message.startswith(chr( SYNC1 ) + chr( SYNC2 )):
+        if (message[0] != SYNC1) or (message[1] != SYNC2):
             return result
 
         result['sync'] = True
@@ -510,7 +512,7 @@ class UbloxMessage(object):
         result['lengthMatch'] = True
 
         # Validate checksum
-        if self.checksum(message[2:length+6]) != struct.unpack("<BB", message[length+6:length+8]):
+        if UbloxMessage.checksum(message[2:length+6]) != struct.unpack("<BB", message[length+6:length+8]):
             result['checksum'] = False
         else:
             result['checksum'] = True
@@ -538,7 +540,7 @@ class UbloxMessage(object):
                     raise ValueError( "Variable length message class 0x%x, id 0x%x \
                         has wrong length %i" % ( cl, id, length ) )
                 data.append(dict(zip(fmt_base[2], struct.unpack(fmt_base[1], payload[:fmt_base[0]]))))
-                for i in range(0, (length - fmt_base[0])/fmt_rep[0]):
+                for i in range(0, (length - fmt_base[0])//fmt_rep[0]):
                     offset = fmt_base[0] + fmt_rep[0] * i
                     data.append(dict(zip(fmt_rep[2], struct.unpack(fmt_rep[1], payload[offset:offset+fmt_rep[0]]))))
 
@@ -612,10 +614,11 @@ class UbloxMessage(object):
 
     @staticmethod
     def checksum(msg):
+        msg = bytearray(msg)
         ck_a = 0
         ck_b = 0
         for i in msg:
-            ck_a = ck_a + ord(i)
+            ck_a = ck_a + i
             ck_b = ck_b + ck_a
         ck_a = ck_a % 256
         ck_b = ck_b % 256
