@@ -1,33 +1,10 @@
 #!/usr/bin/env python3
 
-from ubloxMessage import UbloxMessage
+from ubloxMessage import UbloxMessage, CLIDPAIR
+import ubloxMessage
 from smbus2 import SMBusWrapper
 import time
 import logging
-
-def readBytesAvailable(bus):
-    block = bus.read_i2c_block_data(0x42, 0xfd, 2)
-    bytesAvailable = (block[0] << 8) + block[1]
-
-    return bytesAvailable
-
-def readBytes(bus, numBytes):
-    numBlocks, remainder = divmod(numBytes, 32)
-
-    i = 0
-
-    data = []
-
-    while i < numBlocks:
-        block = bus.read_i2c_block_data(0x42, 0xff, 32)
-        data.extend(block)
-        i += 1
-
-    if remainder > 0:
-        block = bus.read_i2c_block_data(0x42, 0xff, remainder)
-        data.extend(block)
-
-    return data
 
 def printHex(block, header=True):
     numBlocks, remainder = divmod(len(block), 16)
@@ -54,41 +31,159 @@ def printHex(block, header=True):
             hexString = '{:02d}) '.format(i) + hexString
         print(hexString)  
 
+
 class UbloxI2C(object):
     def __init__(self, bus, ubloxAddress=0x42):
         self.bus = bus
-        self.ubloxAddress = ubloxAddress
+        self.deviceAddress = ubloxAddress
 
-    def poll(self, messageType):
+    def getNavPvt(self):
+        data = self.poll('NAV-PVT', printMessage=printMessage)
+        return data
+
+    def getNavStatus(self, printMessage=False):
+        data = self.poll('NAV-STATUS', printMessage=printMessage)
+        return data[0]
+
+    def reset(self, startType, clear=None, mode='hw'):
+        if clear is None:
+            if startType == 'hot':
+                navBbrMask = 0
+            elif startType == 'warm':
+                navBbrMask = 1
+            elif startType == 'cold':
+                navBbrMask = 0xff
+        else:
+            navBbrMask = UbloxMessage.buildMask(clear, ubloxMessage.navBbrMaskShiftDict)
+
+        resetMode = ubloxMessage.resetModeDict[mode]
+
+        logging.info('Sending restart command... this will not be ACKed.')
+        self.sendMessage("CFG-RST", 4, {'nav_bbr': navBbrMask, 'Reset': resetMode})
+
+    def poll(self, messageType, length=0, data=[], printMessage=False):
         logging.info('Polling for {}...'.format(messageType))
 
-        bytesAvailable = readBytesAvailable(bus)
-        if bytesAvailable > 0:
-            logging.info('Dumping buffer [{} bytes]...'.format(bytesAvailable))
-            readBytes(bus, bytesAvailable)
-        
-        message = UbloxMessage.buildMessage(messageType, 0, [])
-        bus.write_i2c_block_data(0x42, 0xff, message)
-        
-        time.sleep(0.01)
+        self.clearReceiveBuffer()
+        self.sendMessage(messageType, length, data)
 
-        bytesAvailable = readBytesAvailable(bus)
+        msgType, data, remainder = self.receiveMessage()
+
+        if msgType != messageType:
+            raise Exception('Response was of a different type! Got {} instead of {}!'.format(msgType, messageType))
+
+        if remainder is not None:
+            logging.debug('Parsing remainder...')
+            msgTypeR, dataR, remainder = UbloxMessage.parse(remainder)
+            if messageType.startswith('CFG-') and msgTypeR == 'ACK-ACK':
+                if self.checkAck(msgTypeR, dataR, messageType):
+                    logging.info('Config message ACKed by ublox.')
+
+        if printMessage:
+            UbloxMessage.print(msgType, data)
+
+        return data
+
+    def sendConfig(self, messageType, length, data):
+        logging.info('Sending {}...'.format(messageType))
+
+        self.clearReceiveBuffer()
+
+        self.sendMessage(messageType, length, data)
+
+        msgType, data, remainder = self.receiveMessage()
+
+        if self.checkAck(msgType, data, messageType):
+            logging.info('Config message ACKed by ublox.')
+
+        return None
+
+    def checkAck(self, ackMessageType, ackData, cfgMessageType):
+        if ackMessageType == 'ACK-NACK':
+            raise Exception('ublox receiver responded with ACK-NACK!')
+
+        if ackMessageType != 'ACK-ACK':
+            raise ValueError('This is not an ACK-ACK or ACK-NACK message! ({})\n{}'.format(ackMessageType, ackData))
+
+        clsId, msgId = CLIDPAIR[cfgMessageType]
+        if ackData[0]['ClsID'] != clsId or ackData[0]['MsgID'] != msgId:
+            raise ValueError('ublox receiver ACKed a different message ({}, {})!'.format(data[0]['ClsID'], data[0]['MsgID']))
+
+        return True
+
+    def sendMessage(self, messageType, length, data):
+        message = UbloxMessage.buildMessage(messageType, length, data)
+        self.bus.write_i2c_block_data(self.deviceAddress, 0xff, message)
+
+    def receiveMessage(self, timeout=1):
+        bytesAvailable = self.waitForMessage(timeout=timeout)
 
         if bytesAvailable == 0:
             raise Exception('Failed to get response!')
         else:
-            logging.info('Bytes available: {}'.format(bytesAvailable))
+            logging.debug('Bytes available for read: {}'.format(bytesAvailable))
         
-        message = readBytes(bus, bytesAvailable)
-        msgFormat, data, remainder = UbloxMessage.parse(message)
+        message = self.readBytes(bytesAvailable)
+        msgType, data, remainder = UbloxMessage.parse(message)
 
-        if msgFormat != messageType:
-            raise Exception('Response was of a different type! Got {} instead of {}!'.format(msgFormat, messageType))
+        if remainder is not None:
+            logging.debug('Extra data in message buffer! ({})'.format(len(remainder)))
+
+        return msgType, data, remainder
+
+    def waitForMessage(self, timeout=1):
+        sleepTime = 0.005
+        startTime = time.time()
+        bytesAvailable = self.readBytesAvailable()
+        while bytesAvailable == 0:
+            elapsedTime = time.time() - startTime
+            
+            if elapsedTime > timeout:
+                break
+            
+            if elapsedTime < 0.05:
+                pass
+            elif elapsedTime < 0.5:
+                sleepTime = 0.05
+            else:
+                sleepTime = 0.1
+
+            time.sleep(sleepTime)
+            bytesAvailable = self.readBytesAvailable()
+
+        if bytesAvailable > 0:
+            logging.debug('Response in {:.3f} s'.format(time.time()-startTime))
+
+        return bytesAvailable
+
+    def clearReceiveBuffer(self):
+        bytesAvailable = self.readBytesAvailable()
+        if bytesAvailable > 0:
+            logging.info('Dumping buffer [{} bytes]...'.format(bytesAvailable))
+            self.readBytes(bytesAvailable)
+
+    def readBytesAvailable(self):
+        block = self.bus.read_i2c_block_data(self.deviceAddress, 0xfd, 2)
+        bytesAvailable = (block[0] << 8) + block[1]
+
+        return bytesAvailable
+
+    def readBytes(self, numBytes):
+        numBlocks, remainder = divmod(numBytes, 32)
+
+        i = 0
+        data = []
+
+        while i < numBlocks:
+            block = self.bus.read_i2c_block_data(self.deviceAddress, 0xff, 32)
+            data.extend(block)
+            i += 1
+
+        if remainder > 0:
+            block = self.bus.read_i2c_block_data(self.deviceAddress, 0xff, remainder)
+            data.extend(block)
 
         return data
-
-    def sendConfig(self, messageType, size, packet):
-        pass
 
 
 if __name__=='__main__':
@@ -97,13 +192,35 @@ if __name__=='__main__':
     parser.add_argument('--bus', '-b', type=int, default=11, help='I2C bus number')
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.WARNING)
+    # logging.basicConfig(level=logging.WARNING)
+    logging.basicConfig(level=logging.DEBUG)
 
     with SMBusWrapper(args.bus) as bus:
-        ublox = UbloxI2C(args.bus)
-        data = ublox.poll('MON-VER')
+        ublox = UbloxI2C(bus)
+        data = ublox.poll('MON-VER', printMessage=True)
 
-        print('    Software version: {}'.format(data[0]['SWVersion'].decode('ascii').strip()))
-        print('    Hardware version: {}'.format(data[0]['HWVersion'].decode('ascii').strip()))
-        for i in range(1, len(data)):
-            print('    Extension: {}'.format(data[i]['Extension'].decode('ascii').strip()))
+        data = ublox.poll('NAV-PVT', printMessage=True)
+
+        data = ublox.poll('CFG-PRT', printMessage=True)
+        
+        if data[1]['Out_proto_mask'] != 1:
+            print('\nReconfiguring I2C out proto mask...')
+            data[1]['Out_proto_mask'] = 1
+            ublox.sendConfig('CFG-PRT', 20, data)
+
+        data = ublox.poll('CFG-PRT', 1, {'PortID': 1}, printMessage=True)
+
+        print('\nReconfiguring UART in proto mask...')
+        data[1]['In_proto_mask'] = 3
+        ublox.sendConfig('CFG-PRT', 20, data)
+
+        data = ublox.poll('CFG-PRT', 1, {'PortID': 1}, printMessage=True)
+
+        data = ublox.getNavStatus(printMessage=True)
+
+        ublox.reset(None, ['pos', 'sfdr', 'vmon'], 'swGnssOnly')
+
+        data = ublox.getNavStatus(printMessage=True)
+
+
+

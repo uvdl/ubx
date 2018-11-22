@@ -215,6 +215,8 @@ MSGFMT = {
         ["<iiIhbbiiihhhbB", ["pulses", "period", "gyromean", "temp", "dir", "calib", "pulse", "gbias", "gscale", "accps", "accgb", "accgs", "used", "res"]],
     ("NAV-ATT", 32) :
         ["<IBxxxiiiIII", ["ITOW", "Version", "Roll", "Pitch", "Heading", "AccRoll", "AccPitch", "AccHeading"]],
+    ("NAV-PVT", 92) :
+        ["<IHBBBBBBIiBBBBiiiiIIiiiiiIIHxxxxxxihH", ["ITOW", "Year", "Month", "Day", "Hour", "Min", "Sec", "Valid", "TAcc", "Nano", "FixType", "Flags", "Flags2", "NumSV", "LON", "LAT", "HEIGHT", "HMSL", "Hacc", "Vacc", "VEL_N", "VEL_E", "VEL_D", "GSpeed", "HeadMot", "SAcc", "HeadAcc", "PDOP", "HeadVeh", "MagDec", "MagAcc"]],
     # ('RXM-RAW', [{'Week': 1575, 'ITOW': 475184470, 'NSV': 0}])
     ("RXM-RAW", None) :
         [8, "<ihBx", ["ITOW", "Week", "NSV"], 24, "<ddfBbbB", ["CPMes", "PRMes", "DOMes", "SV", "MesQI", "CNO", "LLI"]],
@@ -409,6 +411,8 @@ navBbrMaskShiftDict = {'eph':    0,
                        'osc':    6,
                        'utc':    7,
                        'rtc':    8,
+                       'sfdr':   11,
+                       'vmon':   12,
                        'aop':    15,
                       }
 
@@ -570,7 +574,7 @@ class UbloxMessage(object):
                     return
             stream = stream + struct.pack(fmt_base[1], *[payload_base[i] for i in fmt_base[2]])
             if fmt_rep[0] != 0:
-                for i in range(0, (length - fmt_base[0])/fmt_rep[0]):
+                for i in range(0, (length - fmt_base[0])//fmt_rep[0]):
                     stream = stream + struct.pack(fmt_rep[1], *[payload_rep[i][j] for j in fmt_rep[2]])
         stream = stream + struct.pack("<BB", *UbloxMessage.checksum( stream[2:] ))
         return stream
@@ -639,3 +643,56 @@ class UbloxMessage(object):
             mask |= (1 << shiftDict[bit])
 
         return mask
+
+    @staticmethod
+    def print(messageType, data):
+        print('\n{}:'.format(messageType))
+
+        if messageType == 'CFG-PRT':
+            print('    Port ID: {}'.format(data[1]['PortID']))
+            print('    TX ready: 0x{:02x}'.format(data[1]['TxReady']))
+            print('    Mode: 0x{:04x}'.format(data[1]['Mode']))
+            print('    Baud rate: {}'.format(data[1]['Baudrate']))
+            print('    In proto mask:  0x{:02x}'.format(data[1]['In_proto_mask']))
+            print('    Out proto mask: 0x{:02x}'.format(data[1]['Out_proto_mask']))
+            print('    Flags: 0x{:02x}'.format(data[1]['Flags']))
+        elif messageType == 'MON-VER':
+            print('    Software version: {}'.format(data[0]['SWVersion'].decode('ascii').strip()))
+            print('    Hardware version: {}'.format(data[0]['HWVersion'].decode('ascii').strip()))
+            for i in range(1, len(data)):
+                print('    Extension: {}'.format(data[i]['Extension'].decode('ascii').strip()))
+        elif messageType == 'NAV-PVT':
+            print('    ITOW: {}'.format(data[0]['ITOW']))
+            seconds = data[0]['Sec'] + data[0]['Nano']/1e9
+            print('    UTC: {:04d}-{:02d}-{:2d} {:02d}:{:02d}:{:012.9f}'.format(data[0]['Year'], data[0]['Month'], data[0]['Day'], data[0]['Hour'], data[0]['Min'], seconds))
+            print('        Seconds: {}, Nano: {}'.format(data[0]['Sec'], data[0]['Nano']))
+            print('    Valid: 0x{:02x}'.format(data[0]['Valid']))
+            print('    Time accuracy: {} ns'.format(data[0]['TAcc']))
+            print('    Fix type: {}'.format(data[0]['FixType']))
+            print('    Flags:  0x{:02x}'.format(data[0]['Flags']))
+            print('    Flags2: 0x{:02x}'.format(data[0]['Flags2']))
+            print('    NumSV: {}'.format(data[0]['NumSV']))
+            print('    Position: {:.7f}, {:.7f}, {:.3f} m'.format(data[0]['LAT']/1e7, data[0]['LON']/1e7, data[0]['HEIGHT']/1e3))
+            print('    HMSL: {:.3f} m'.format(data[0]['HMSL']/1e3))
+            print('    PDOP: {:.2f}'.format(data[0]['PDOP']/1e2))
+            print('    Horizontal accuracy: {:.3f} m'.format(data[0]['Hacc']/1e3))
+            print('    Vertical accuracy:   {:.3f} m'.format(data[0]['Vacc']/1e3))
+            print('    Velocity - N: {:.3f}, E: {:.3f}, D: {:.3f} (m/s)'.format(data[0]['VEL_N']/1e3, data[0]['VEL_E']/1e3, data[0]['VEL_D']/1e3))
+            print('    Ground speed:   {:.3f} m/s'.format(data[0]['GSpeed']/1e3))
+            print('    Speed accuracy: {:.3f} m/s'.format(data[0]['SAcc']/1e3))
+            print('    Heading of motion:  {:.5f} deg'.format(data[0]['HeadMot']/1e5))
+            print('    Heading of vehicle: {:.5f} deg'.format(data[0]['HeadVeh']/1e5))
+            print('    Heading accuracy:   {:.5f} deg'.format(data[0]['HeadAcc']/1e5))
+            print('    Magnetic declination: {:.2f} deg'.format(data[0]['MagDec']/1e2))
+            print('    Magnetic accuracy:    {:.2f} deg'.format(data[0]['MagAcc']/1e2))
+
+        elif messageType == 'NAV-STATUS':
+            print('    ITOW: {}'.format(data[0]['ITOW']))
+            print('    GPSFix: {}'.format(data[0]['GPSfix']))
+            print('    Flags: 0x{:02x}'.format(data[0]['Flags']))
+            print('    TTFF: {:.3f} s'.format(data[0]['TTFF']/1e3))
+            print('    MSSS: {:.3f} s'.format(data[0]['MSSS']/1e3))
+        else:
+            for dataDict in data:
+                for field, value in dataDict.items():
+                    print('    {}: {}'.format(field, value))
