@@ -645,8 +645,11 @@ class UbloxMessage(object):
         return mask
 
     @staticmethod
-    def print(messageType, data):
-        print('\n{}:'.format(messageType))
+    def printMessage(messageType, data, header=None):
+        if header is not None:
+            print('\n{}{}:'.format(header, messageType))
+        else:    
+            print('\n{}:'.format(messageType))
 
         if messageType == 'CFG-PRT':
             print('    Port ID: {}'.format(data[1]['PortID']))

@@ -80,7 +80,7 @@ class UbloxI2C(object):
                     logging.info('Config message ACKed by ublox.')
 
         if printMessage:
-            UbloxMessage.print(msgType, data)
+            UbloxMessage.printMessage(msgType, data)
 
         return data
 
