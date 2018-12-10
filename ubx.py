@@ -11,7 +11,7 @@ GPLv2
 import struct
 import calendar
 import os
-import gobject
+#import gobject
 import logging
 import sys
 import socket
@@ -27,7 +27,7 @@ class Parser():
             os.system("stty -F %s raw" % device)
             self.fd = os.open(device, os.O_NONBLOCK | os.O_RDWR)
             self.flush()
-            gobject.io_add_watch(self.fd, gobject.IO_IN, self.cbDeviceReadable)
+            #gobject.io_add_watch(self.fd, gobject.IO_IN, self.cbDeviceReadable)
         self.buffer = ""
         self.ack = {"CFG-PRT" : 0}
         self.ubx = {}
